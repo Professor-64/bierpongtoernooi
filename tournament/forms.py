@@ -77,12 +77,13 @@ TournamentSettingsForm = TournamentGameForm
 
 
 class TournamentDisplayForm(forms.ModelForm):
-    """Publieke weergave-tab: tafels en timer."""
+    """Publieke weergave-tab: tafels, timer, verversing en wachtwoord."""
     class Meta:
         model = Tournament
         fields = [
             'table_display_cols', 'show_drinks_on_tables', 'table_orientation',
             'round_duration_minutes', 'show_timer_in_live',
+            'public_refresh_seconds', 'public_password',
         ]
 
 

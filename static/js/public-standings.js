@@ -460,7 +460,7 @@ async function refresh() {
 }
 
 refresh();
-setInterval(refresh, 10000);
+setInterval(refresh, (PUBLIC_CONFIG.refreshSeconds || 5) * 1000);
 
 /* ── Standings section modal ──────────────────────────────────── */
 

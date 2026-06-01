@@ -1795,18 +1795,56 @@ def timer_control(request, slug):
 
 # ==================== Public ====================
 
+def _check_public_auth(request, tournament):
+    """Return a redirect if the tournament is password-protected and session is not authenticated."""
+    if not tournament.public_password:
+        return None
+    session_key = f'public_auth_{tournament.slug}'
+    if request.session.get(session_key) == tournament.public_password:
+        return None
+    next_path = request.get_full_path()
+    return redirect(f'/p/{tournament.slug}/toegang/?next={next_path}')
+
+
+def public_access(request, slug):
+    tournament = get_object_or_404(Tournament, slug=slug)
+    if not tournament.public_password:
+        return redirect('public_home', slug=slug)
+    error = None
+    if request.method == 'POST':
+        password = request.POST.get('password', '')
+        if password == tournament.public_password:
+            request.session[f'public_auth_{tournament.slug}'] = tournament.public_password
+            next_url = request.GET.get('next') or f'/p/{slug}/'
+            return redirect(next_url)
+        error = 'Ongeldig wachtwoord — probeer opnieuw.'
+    return render(request, 'tournament/public/access.html', {
+        'tournament': tournament,
+        'error': error,
+    })
+
+
 def public_home(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     return render(request, 'tournament/public/home.html', {'tournament': tournament})
 
 
 def public_scoreboard(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     return render(request, 'tournament/public/scoreboard.html', {'tournament': tournament})
 
 
 def public_standings(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
     ).select_related('team'))
@@ -1818,6 +1856,9 @@ def public_standings(request, slug):
 
 def public_tables(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     return render(request, 'tournament/public/tables.html', {'tournament': tournament})
 
 
@@ -1873,6 +1914,9 @@ def _generate_auto_rules(tournament):
 
 def public_rules(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     content = tournament.custom_rules or _generate_auto_rules(tournament)
     return render(request, 'tournament/public/rules.html', {
         'tournament': tournament,
@@ -1882,6 +1926,9 @@ def public_rules(request, slug):
 
 def public_timer(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
     return render(request, 'tournament/public/timer.html', {'tournament': tournament})
 
 

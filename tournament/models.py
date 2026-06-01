@@ -111,6 +111,14 @@ class Tournament(models.Model):
 
     custom_rules = models.TextField(blank=True, default='', verbose_name='Aanvullende afspraken (aanpasbaar)')
 
+    public_refresh_seconds = models.PositiveIntegerField(
+        default=5, verbose_name='Verversingstijd publieke pagina\'s (seconden)'
+    )
+    public_password = models.CharField(
+        max_length=100, blank=True, default='',
+        verbose_name='Wachtwoord publieke pagina\'s'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

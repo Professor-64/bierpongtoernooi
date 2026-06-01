@@ -199,4 +199,4 @@ async function refresh() {
 }
 
 refresh();
-setInterval(refresh, 5000);
+setInterval(refresh, (PUBLIC_CONFIG.refreshSeconds || 5) * 1000);

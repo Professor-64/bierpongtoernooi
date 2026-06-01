@@ -96,5 +96,5 @@
 
   fetchTimer();
   setInterval(tick, 1000);
-  setInterval(fetchTimer, 5000);
+  setInterval(fetchTimer, (PUBLIC_CONFIG.refreshSeconds || 5) * 1000);
 })();

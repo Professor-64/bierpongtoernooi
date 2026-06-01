@@ -83,13 +83,12 @@
 
 {% block extra_scripts %}
 <script>
-const PUBLIC_CONFIG = {
-  slug: '{{ tournament.slug }}',
+Object.assign(PUBLIC_CONFIG, {
   format: '{{ tournament.format }}',
   advLine: {{ tournament.knockout_advancement }},
   koPerGroup: {{ tournament.groups_ko_per_group }},
   poPerGroup: {{ tournament.groups_playoff_per_group }},
-};
+});
 </script>
 <script src="/static/js/public-standings.js"></script>
 {% endblock %}

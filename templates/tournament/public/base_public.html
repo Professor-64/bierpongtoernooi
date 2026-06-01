@@ -52,7 +52,7 @@
     {% block content %}{% endblock %}
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
-  <script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}' };</script>
+  <script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}', refreshSeconds: {{ tournament.public_refresh_seconds }} };</script>
   <script src="/static/js/public-base.js"></script>
   {% block extra_scripts %}{% endblock %}
 </body>

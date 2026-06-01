@@ -743,3 +743,25 @@ body {
 .rules-wrap ol { padding-left: 1.5rem; margin-bottom: 1rem; }
 .rules-wrap li { margin-bottom: .35rem; }
 .rules-wrap strong { color: #0f172a; }
+
+/* ── Password access page ─────────────────────────────────────── */
+.access-wrap {
+  min-height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.access-card {
+  max-width: 420px;
+  width: 100%;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 2rem 2.5rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+}
+.access-card h2 { font-size: 1.4rem; margin-bottom: 1.25rem; }
+.access-btn {
+  background: var(--bp-primary);
+  border-color: var(--bp-primary);
+  width: 100%;
+}

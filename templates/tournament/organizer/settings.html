@@ -247,6 +247,24 @@
               </div>
             </div>
 
+            <div class="card-body border-bottom">
+              <h4 class="card-title mb-3">Publieke pagina's</h4>
+              <div class="row g-3 mb-3">
+                <div class="col-md-4">
+                  <label class="form-label">Verversingstijd (seconden)</label>
+                  {% render_field display_form.public_refresh_seconds class="form-control" type="number" min="1" max="60" %}
+                  <div class="form-hint">Scorebord, stand, tafels en timer worden elke X seconden bijgewerkt.</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-5">
+                  <label class="form-label">Wachtwoord publieke pagina's</label>
+                  {% render_field display_form.public_password class="form-control" type="text" placeholder="Leeg = geen beveiliging" autocomplete="off" %}
+                  <div class="form-hint">Bezoekers moeten dit wachtwoord invoeren voor ze het scorebord kunnen zien. Laat leeg om de beveiliging uit te schakelen.</div>
+                </div>
+              </div>
+            </div>
+
             <div class="card-footer">
               <button type="submit" class="btn btn-primary">Opslaan</button>
             </div>
