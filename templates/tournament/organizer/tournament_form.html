@@ -1,0 +1,100 @@
+{% extends "base_organizer.html" %}
+{% load widget_tweaks %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">{{ title }}</h2>
+    <div class="text-muted mt-1">
+      <ol class="breadcrumb breadcrumb-alternate" aria-label="breadcrumbs">
+        <li class="breadcrumb-item"><a href="{% url 'home' %}">Home</a></li>
+        <li class="breadcrumb-item active">{{ title }}</li>
+      </ol>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <form method="post">
+      {% csrf_token %}
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Toernooi aanmaken</h3></div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label required">Naam toernooi</label>
+            {% render_field form.name class="form-control" placeholder="Bijv. Bierpongtournooi 2025" %}
+            {% if form.name.errors %}<div class="invalid-feedback d-block">{{ form.name.errors }}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">Formaat</label>
+            {% render_field form.format class="form-select" %}
+            <div class="form-hint">
+              Poule: iedereen speelt X keer. Knock-out: directe uitschakeling. Combinatie: eerst poule, dan knock-out.
+            </div>
+          </div>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Aantal bekers</label>
+              {% render_field form.cup_count class="form-control" type="number" min="1" max="30" %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Wedstrijden per ploeg (poule)</label>
+              {% render_field form.games_per_team class="form-control" type="number" min="1" max="20" %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-header"><h3 class="card-title">Punten & Timer</h3></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label">Punten winst</label>
+              {% render_field form.points_win class="form-control" type="number" min="0" %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Punten gelijk</label>
+              {% render_field form.points_draw class="form-control" type="number" min="0" %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Punten verlies</label>
+              {% render_field form.points_loss class="form-control" type="number" min="0" %}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Bonuspunten (alle bekers)</label>
+              {% render_field form.points_bonus_all_cups class="form-control" type="number" min="0" %}
+            </div>
+          </div>
+          <div class="row g-3 mt-1">
+            <div class="col-md-6">
+              <label class="form-label">Rondetijd (minuten)</label>
+              {% render_field form.round_duration_minutes class="form-control" type="number" min="1" max="60" %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Ploegen naar knock-out fase</label>
+              {% render_field form.knockout_advancement class="form-control" type="number" min="2" max="16" %}
+              <div class="form-hint">Enkel relevant bij "Combinatie" formaat</div>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="row">
+            <div class="col">
+              <a href="{% url 'home' %}" class="btn btn-ghost-secondary">Annuleren</a>
+            </div>
+            <div class="col-auto">
+              <button type="submit" class="btn btn-primary">Toernooi aanmaken</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

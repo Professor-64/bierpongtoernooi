@@ -1,0 +1,59 @@
+{% load tournament_tags %}<!doctype html>
+<html lang="nl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{% block title %}{{ tournament.name }}{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="/static/css/public.css?v={{ tournament.id }}">
+  <style>
+    /* Tournament-specific CSS variables (set per-tournament from DB) */
+    :root {
+      --bp-primary: {{ tournament.primary_color }};
+      --bp-primary-rgb: {{ tournament.primary_color|hex_to_rgb }};
+      --bp-secondary: {{ tournament.secondary_color }};
+      --tblr-primary: {{ tournament.primary_color }};
+      --tblr-primary-rgb: {{ tournament.primary_color|hex_to_rgb }};
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="public-header">
+    <div class="d-flex align-items-center gap-3">
+      {% if tournament.logo %}
+        <img src="{{ tournament.logo.url }}" style="height:36px;" alt="">
+      {% endif %}
+      <span class="tournament-title">{{ tournament.name }}</span>
+    </div>
+    <nav class="public-nav d-flex align-items-center gap-1">
+      <a href="{% url 'public_scoreboard' tournament.slug %}"
+         class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Scorebord</a>
+      <a href="{% url 'public_standings' tournament.slug %}"
+         class="{% if request.resolver_match.url_name == 'public_standings' %}active{% endif %}">Stand</a>
+      <a href="{% url 'public_tables' tournament.slug %}"
+         class="{% if request.resolver_match.url_name == 'public_tables' %}active{% endif %}">Tafels</a>
+      <a href="{% url 'public_timer' tournament.slug %}"
+         class="{% if request.resolver_match.url_name == 'public_timer' %}active{% endif %}">Timer</a>
+      <a href="{% url 'public_rules' tournament.slug %}"
+         class="{% if request.resolver_match.url_name == 'public_rules' %}active{% endif %}">Afspraken</a>
+      <div class="ms-2 header-timer" id="header-timer-display">--:--</div>
+    </nav>
+  </div>
+
+  <!-- Sound unlock floating button (shown when sound_enabled but not yet unlocked) -->
+  <button class="sound-unlock-btn" id="sound-unlock-btn" onclick="unlockAudio()">
+    🔊 Geluid inschakelen
+  </button>
+
+  <div class="main-content">
+    {% block content %}{% endblock %}
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
+  <script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}' };</script>
+  <script src="/static/js/public-base.js"></script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

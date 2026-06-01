@@ -1,0 +1,135 @@
+<div class="card match-card status-{{ match.status }} {% if match.hidden %}is-hidden{% endif %}" id="match-card-{{ match.id }}" data-match-id="{{ match.id }}">
+
+  <!-- Card header: table select + phase + status -->
+  <div class="card-header py-2">
+    <div class="d-flex align-items-center justify-content-between w-100">
+      <div class="d-flex align-items-center gap-2">
+        <select class="table-select-inline"
+                onchange="setTable({{ match.id }}, this.value, '{{ tournament.slug }}')">
+          <option value="">— geen tafel —</option>
+          {% for t in all_tables %}
+          <option value="{{ t.id }}" data-number="{{ t.number }}" {% if match.table and match.table.id == t.id %}selected{% endif %}>{{ t.name }}</option>
+          {% endfor %}
+        </select>
+        <span class="text-muted small">{{ match.phase_label_text|default:match.get_phase_display }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-icon {% if match.hidden %}btn-danger{% else %}btn-ghost-secondary{% endif %}"
+                title="{% if match.hidden %}Tonen{% else %}Verbergen{% endif %} in publiek scorebord"
+                onclick="toggleHidden({{ match.id }}, '{{ tournament.slug }}', this)">
+          {% if match.hidden %}
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="3" y1="3" x2="21" y2="21"/><path d="M10.584 10.587a2 2 0 0 0 2.828 2.83"/><path d="M9.363 5.365a9.466 9.466 0 0 1 2.637-.365c4 0 7.333 2.333 10 7c-.778 1.361 -1.612 2.524 -2.503 3.488m-2.14 1.861c-1.631 1.1 -3.415 1.651 -5.357 1.651c-4 0 -7.333 -2.333 -10 -7c1.369 -2.395 2.913 -4.175 4.632 -5.341"/></svg>
+          {% else %}
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="2"/><path d="M22 12c-2.667 4.667 -6 7 -10 7s-7.333 -2.333 -10 -7c2.667 -4.667 6 -7 10 -7s7.333 2.333 10 7"/></svg>
+          {% endif %}
+        </button>
+        {% if match.status == 'in_progress' %}
+          <span class="badge bg-warning text-dark">Bezig</span>
+        {% elif match.status == 'finished' %}
+          <span class="badge bg-success">Klaar</span>
+        {% else %}
+          <span class="badge bg-secondary">Gepland</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Scores -->
+  <div class="card-body py-3">
+    <div class="d-flex align-items-center justify-content-between gap-2">
+
+      <!-- Team 1 -->
+      <div class="text-center flex-fill">
+        <div class="team-name {% if match.status == 'finished' and match.score1 > match.score2 %}text-success{% elif match.status == 'finished' and match.score1 < match.score2 %}text-danger{% endif %}">
+          {{ match.team1.name|default:"TBD" }}
+        </div>
+        <div class="text-muted small">{{ match.team1.drink.name|default:"" }}</div>
+        <div id="bonus-display-1-{{ match.id }}" {% if not match.bonus_team1 %}style="visibility:hidden"{% endif %}>
+          <span class="badge bg-yellow text-dark mt-1">Bonus</span>
+        </div>
+      </div>
+
+      <!-- Score buttons -->
+      <div class="text-center flex-shrink-0">
+        <div class="d-flex align-items-center gap-2">
+          <div>
+            {% if match.status != 'finished' %}
+            <button class="btn btn-sm btn-outline-secondary score-btn d-block mb-1"
+                    onclick="changeScore({{ match.id }},'score1',1,'{{ tournament.slug }}',{{ tournament.cup_count }})">+</button>
+            {% endif %}
+            <div class="score-display" id="score1-{{ match.id }}">{{ match.score1 }}</div>
+            {% if match.status != 'finished' %}
+            <button class="btn btn-sm btn-outline-secondary score-btn d-block mt-1"
+                    onclick="changeScore({{ match.id }},'score1',-1,'{{ tournament.slug }}',{{ tournament.cup_count }})">-</button>
+            {% endif %}
+          </div>
+          <div class="text-muted fs-5">–</div>
+          <div>
+            {% if match.status != 'finished' %}
+            <button class="btn btn-sm btn-outline-secondary score-btn d-block mb-1"
+                    onclick="changeScore({{ match.id }},'score2',1,'{{ tournament.slug }}',{{ tournament.cup_count }})">+</button>
+            {% endif %}
+            <div class="score-display" id="score2-{{ match.id }}">{{ match.score2 }}</div>
+            {% if match.status != 'finished' %}
+            <button class="btn btn-sm btn-outline-secondary score-btn d-block mt-1"
+                    onclick="changeScore({{ match.id }},'score2',-1,'{{ tournament.slug }}',{{ tournament.cup_count }})">-</button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Team 2 -->
+      <div class="text-center flex-fill">
+        <div class="team-name {% if match.status == 'finished' and match.score2 > match.score1 %}text-success{% elif match.status == 'finished' and match.score2 < match.score1 %}text-danger{% endif %}">
+          {{ match.team2.name|default:"TBD" }}
+        </div>
+        <div class="text-muted small">{{ match.team2.drink.name|default:"" }}</div>
+        <div id="bonus-display-2-{{ match.id }}" {% if not match.bonus_team2 %}style="visibility:hidden"{% endif %}>
+          <span class="badge bg-yellow text-dark mt-1">Bonus</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  {% if match.status != 'finished' and match.team1 and match.team2 %}
+  <div class="card-footer py-2">
+    <div class="d-flex justify-content-between mb-2">
+      <label class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="bonus1-{{ match.id }}"
+               {% if match.bonus_team1 %}checked{% endif %}
+               onchange="setBonusManual({{ match.id }},1,this.checked)">
+        <span class="form-check-label small">Bonus {{ match.team1.name|truncatechars:12 }}</span>
+      </label>
+      <label class="form-check mb-0">
+        <input class="form-check-input" type="checkbox" id="bonus2-{{ match.id }}"
+               {% if match.bonus_team2 %}checked{% endif %}
+               onchange="setBonusManual({{ match.id }},2,this.checked)">
+        <span class="form-check-label small">Bonus {{ match.team2.name|truncatechars:12 }}</span>
+      </label>
+    </div>
+    <div class="d-flex gap-2">
+      {% if match.status == 'scheduled' %}
+      <button class="btn btn-sm btn-outline-primary flex-fill"
+              onclick="startMatch({{ match.id }},'{{ tournament.slug }}')">Starten</button>
+      {% endif %}
+      <button class="btn btn-sm btn-success flex-fill"
+              onclick="finishMatch({{ match.id }},'{{ tournament.slug }}')">Afsluiten</button>
+      <button class="btn btn-sm btn-ghost-secondary"
+              onclick="resetMatch({{ match.id }},'{{ tournament.slug }}')">Reset</button>
+    </div>
+  </div>
+  {% elif match.status == 'finished' %}
+  <div class="card-footer py-2">
+    <div class="d-flex justify-content-between align-items-center">
+      <span class="text-muted small">
+        {% if match.score1 > match.score2 %}{{ match.team1.name }} wint
+        {% elif match.score2 > match.score1 %}{{ match.team2.name }} wint
+        {% else %}Gelijk{% endif %}
+      </span>
+      <button class="btn btn-sm btn-ghost-secondary"
+              onclick="reopenMatch({{ match.id }},'{{ tournament.slug }}')">Heropen</button>
+    </div>
+  </div>
+  {% endif %}
+</div>

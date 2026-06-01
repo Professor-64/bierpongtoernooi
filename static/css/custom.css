@@ -1,0 +1,16 @@
+/* Bierpongtournooi — shared base styles (organizer pages) */
+
+* { box-sizing: border-box; }
+
+/* Pulsing animation — used by .animate-pulse helper class */
+@keyframes bp-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.animate-pulse { animation: bp-pulse 1.5s ease-in-out infinite; }
+
+/* Color picker */
+.form-control-color { height: 48px; padding: 4px; cursor: pointer; }
+
+/* Tabler override: sidebar brand */
+.navbar-brand-autodark .navbar-brand-image { filter: none; max-height: 2rem; }

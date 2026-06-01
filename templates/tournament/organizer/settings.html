@@ -1,0 +1,426 @@
+{% extends "base_organizer.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Instellingen - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col"><h2 class="page-title">Instellingen</h2></div>
+  <div class="col-auto ms-auto">
+    <a href="{% url 'tournament_delete' tournament.slug %}" class="btn btn-ghost-danger btn-sm">Toernooi verwijderen</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row row-cards">
+  <div class="col-lg-8">
+
+    <div class="card">
+
+      <!-- ── Tab navigatie ────────────────────────────────── -->
+      <div class="card-header p-0">
+        <ul class="nav nav-tabs card-header-tabs px-3 pt-2" id="settings-tabs">
+          <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'game' or not active_tab %}active{% endif %}"
+               href="#tab-game" data-bs-toggle="tab">Game</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'display' %}active{% endif %}"
+               href="#tab-display" data-bs-toggle="tab">Publieke weergave</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'theme' %}active{% endif %}"
+               href="#tab-theme" data-bs-toggle="tab">Thema &amp; Stijl</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link {% if active_tab == 'rules' %}active{% endif %}"
+               href="#tab-rules" data-bs-toggle="tab">Afspraken</a>
+          </li>
+        </ul>
+      </div>
+
+      <div class="tab-content">
+
+        <!-- ════════════════════════════════════════════════
+             TAB 1: GAME
+        ════════════════════════════════════════════════ -->
+        <div class="tab-pane {% if active_tab == 'game' or not active_tab %}active show{% endif %}" id="tab-game">
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="game">
+
+            <!-- Algemeen -->
+            <div class="card-body border-bottom">
+              <h4 class="card-title mb-3">Algemeen</h4>
+              <div class="mb-3">
+                <label class="form-label">Naam</label>
+                {% render_field game_form.name class="form-control" %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Formaat</label>
+                {% render_field game_form.format class="form-select" %}
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Standaarddrank
+                  <span class="form-hint d-inline ms-1">— vooringevuld bij nieuwe ploeg</span>
+                </label>
+                {% render_field game_form.default_drink %}
+                <div class="form-hint"><a href="{% url 'drinks_manage' %}">Dranken beheren →</a></div>
+              </div>
+              <div>
+                <label class="form-label">Aantal bekers</label>
+                {% render_field game_form.cup_count class="form-control" type="number" min="1" %}
+              </div>
+            </div>
+
+            <!-- Pouleronde — enkel voor groups formaat -->
+            <div id="section-groups-header" class="card-body border-bottom" style="display:none">
+              <h4 class="card-title mb-3">Pouleronde</h4>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Aantal poules</label>
+                  {% render_field game_form.groups_count class="form-control" type="number" min="2" %}
+                  <div class="form-hint">Teams worden willekeurig verdeeld.</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Teams naar KO per poule</label>
+                  {% render_field game_form.groups_ko_per_group class="form-control" type="number" min="1" %}
+                  <div class="form-hint">Totaal KO = poules × teams (moet 2, 4, 8 of 16 zijn).</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Teams naar play-offs per poule</label>
+                  {% render_field game_form.groups_playoff_per_group class="form-control" type="number" min="0" %}
+                  <div class="form-hint">0 = geen play-offs.</div>
+                </div>
+              </div>
+              {% if game_form.errors.groups_ko_per_group %}
+                <div class="text-danger small mt-2">{{ game_form.errors.groups_ko_per_group|join:", " }}</div>
+              {% endif %}
+              {% if game_form.errors.groups_playoff_per_group %}
+                <div class="text-danger small mt-2">{{ game_form.errors.groups_playoff_per_group|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Competitiefase — enkel voor round_robin en combined -->
+            <div id="section-competitie-header" class="card-body border-bottom" style="display:none">
+              <h4 class="card-title mb-3">Competitiefase</h4>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Wedstrijden per ploeg</label>
+                  {% render_field game_form.games_per_team class="form-control" type="number" min="1" %}
+                  {% with n=tournament.teams.count %}
+                    {% if n > 1 %}
+                      <div class="form-hint">
+                        Max. {{ n|add:"-1" }} unieke tegenstanders met {{ n }} ploegen.
+                        {% if tournament.games_per_team > n|add:"-1" %}
+                          <span class="text-warning fw-semibold">Herhaling!</span>
+                        {% endif %}
+                      </div>
+                    {% endif %}
+                  {% endwith %}
+                </div>
+                <div class="col-md-6" id="row-knockout-advancement" style="display:none">
+                  <label class="form-label">Ploegen naar knock-out</label>
+                  {% render_field game_form.knockout_advancement class="form-control" type="number" min="2" %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Schema & Puntentelling — voor alle formats behalve knockout -->
+            <div id="section-schema-punten" class="card-body border-bottom" style="display:none">
+              <h4 class="card-title mb-3">Schema &amp; Puntentelling</h4>
+              <div class="mb-3">
+                <label class="form-check form-switch">
+                  {% render_field game_form.schedule_efficient class="form-check-input" %}
+                  <span class="form-check-label">Efficiënt speelschema</span>
+                </label>
+                <div class="form-hint">Vult lege tafels op met wedstrijden van de volgende ronde.</div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-3">
+                  <label class="form-label">Punten winst</label>
+                  {% render_field game_form.points_win class="form-control" type="number" min="0" %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Punten gelijk</label>
+                  {% render_field game_form.points_draw class="form-control" type="number" min="0" %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Punten verlies</label>
+                  {% render_field game_form.points_loss class="form-control" type="number" min="0" %}
+                </div>
+                <div class="col-md-3">
+                  <label class="form-label">Bonuspunten</label>
+                  {% render_field game_form.points_bonus_all_cups class="form-control" type="number" min="0" %}
+                </div>
+              </div>
+            </div>
+
+            <!-- Play-offs & Finale ranking -->
+            <div id="section-playoffs-header" class="card-body border-bottom" style="display:none">
+              <h4 class="card-title mb-3">Play-offs &amp; Finale ranking</h4>
+              <div id="row-playoffs-toggle" class="mb-3">
+                <label class="form-check form-switch">
+                  {% render_field game_form.playoff_enabled class="form-check-input" id="id_playoff_enabled" %}
+                  <span class="form-check-label">Play-offs inschakelen</span>
+                </label>
+                <div class="form-hint">Teams net buiten de knock-out spelen eerst een play-off.</div>
+              </div>
+              <div id="playoff-options" class="row g-3 mb-3" style="display:none!important">
+                <div class="col-md-6">
+                  <label class="form-label">Ploegen in play-offs</label>
+                  {% render_field game_form.playoff_count class="form-control" type="number" min="2" %}
+                  <div class="form-hint">Moet even zijn; KO + helft play-offs = macht van 2.</div>
+                </div>
+              </div>
+              {% if game_form.errors.playoff_count %}
+                <div class="text-danger small mt-1 mb-3">{{ game_form.errors.playoff_count|join:", " }}</div>
+              {% endif %}
+              <div id="row-final-ranking-toggle">
+                <label class="form-check form-switch">
+                  {% render_field game_form.final_ranking_enabled class="form-check-input" %}
+                  <span class="form-check-label">Finale ranking inschakelen</span>
+                </label>
+                <div class="form-hint">Resterende ploegen spelen onderling voor eindrangschikking.</div>
+              </div>
+            </div>
+
+            <div class="card-footer d-flex align-items-center gap-3">
+              <button type="submit" class="btn btn-primary">Opslaan</button>
+              {% if game_form.errors %}
+                <div class="text-danger small">
+                  Controleer de velden:
+                  {% for field, errors in game_form.errors.items %}
+                    <strong>{{ field }}</strong>: {{ errors|join:", " }}
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </form>
+        </div>
+
+        <!-- ════════════════════════════════════════════════
+             TAB 2: PUBLIEKE WEERGAVE
+        ════════════════════════════════════════════════ -->
+        <div class="tab-pane {% if active_tab == 'display' %}active show{% endif %}" id="tab-display">
+
+          <!-- Tafels + Timer (display form) -->
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="display">
+
+            <div class="card-body border-bottom">
+              <h4 class="card-title mb-3">Tafels</h4>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Kolommen</label>
+                  {% render_field display_form.table_display_cols class="form-control" type="number" min="1" max="8" %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Orientatie</label>
+                  {% render_field display_form.table_orientation class="form-select" %}
+                </div>
+              </div>
+              <div class="mt-3">
+                <label class="form-check form-switch">
+                  {% render_field display_form.show_drinks_on_tables class="form-check-input" %}
+                  <span class="form-check-label">Dranken tonen in tafelsweergave</span>
+                </label>
+                <div class="form-hint">Toont het drankenlogo bij elke ploeg op de publieke tafelpagina.</div>
+              </div>
+            </div>
+
+            <div class="card-body border-bottom">
+              <h4 class="card-title mb-3">Timer</h4>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Rondetijd (min)</label>
+                  {% render_field display_form.round_duration_minutes class="form-control" type="number" min="1" %}
+                </div>
+              </div>
+              <div class="mt-3">
+                <label class="form-check form-switch">
+                  {% render_field display_form.show_timer_in_live class="form-check-input" %}
+                  <span class="form-check-label">Timer tonen in live scherm</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary">Opslaan</button>
+            </div>
+          </form>
+
+          <!-- Geluid (separate form, no nesting) -->
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="sounds">
+
+            <div class="card-body border-top border-bottom">
+              <h4 class="card-title mb-3">Geluid</h4>
+              <div class="mb-3">
+                <label class="form-check form-switch">
+                  {% render_field sound_form.sound_enabled class="form-check-input" %}
+                  <span class="form-check-label">Geluiden inschakelen op publieke pagina's</span>
+                </label>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Geluid ronde start</label>
+                  {% render_field sound_form.sound_start class="form-control" %}
+                  {% if tournament.sound_start %}
+                    <div class="form-hint">
+                      <audio controls style="height:28px;max-width:100%">
+                        <source src="{{ tournament.sound_start.url }}">
+                      </audio>
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Geluid 30s waarschuwing</label>
+                  {% render_field sound_form.sound_warning class="form-control" %}
+                  {% if tournament.sound_warning %}
+                    <div class="form-hint">
+                      <audio controls style="height:28px;max-width:100%">
+                        <source src="{{ tournament.sound_warning.url }}">
+                      </audio>
+                    </div>
+                  {% endif %}
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Geluid ronde einde</label>
+                  {% render_field sound_form.sound_end class="form-control" %}
+                  {% if tournament.sound_end %}
+                    <div class="form-hint">
+                      <audio controls style="height:28px;max-width:100%">
+                        <source src="{{ tournament.sound_end.url }}">
+                      </audio>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary">Geluid opslaan</button>
+            </div>
+          </form>
+
+        </div>
+
+        <!-- ════════════════════════════════════════════════
+             TAB 3: THEMA & STIJL
+        ════════════════════════════════════════════════ -->
+        <div class="tab-pane {% if active_tab == 'theme' %}active show{% endif %}" id="tab-theme">
+          <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="theme">
+
+            <div class="card-body">
+              <h4 class="card-title mb-3">Thema &amp; Stijl</h4>
+              <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                  <label class="form-label">Primaire kleur</label>
+                  {% render_field theme_form.primary_color id="id_primary_color" %}
+                  <div class="form-hint">Hoofdkleur</div>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Secundaire kleur</label>
+                  {% render_field theme_form.secondary_color id="id_secondary_color" %}
+                  <div class="form-hint">Accentkleur</div>
+                </div>
+                <div class="col-md-4">
+                  <div id="theme-preview" class="p-3 rounded text-white text-center fw-bold"
+                       style="background-color: {{ tournament.primary_color }};">
+                    Voorbeeld
+                  </div>
+                </div>
+              </div>
+              <div class="mt-3">
+                <label class="form-label">Logo</label>
+                {% if tournament.logo %}
+                  <div class="mb-2">
+                    <img src="{{ tournament.logo.url }}" style="max-height:60px;" alt="Huidig logo">
+                    <small class="text-muted ms-2">Huidig logo</small>
+                  </div>
+                {% endif %}
+                {% render_field theme_form.logo class="form-control" %}
+              </div>
+            </div>
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary">Thema opslaan</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- ════════════════════════════════════════════════
+             TAB 5: AFSPRAKEN
+        ════════════════════════════════════════════════ -->
+        <div class="tab-pane {% if active_tab == 'rules' %}active show{% endif %}" id="tab-rules">
+          <form method="post" id="rules-form">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="rules">
+            <div class="card-body">
+              <h4 class="card-title mb-1">Afspraken &amp; regels</h4>
+              <p class="text-muted small mb-3">
+                Auto-gegenereerde regels worden als startpunt ingeladen.
+                Pas ze vrij aan — de tekst op de publieke pagina volgt wat je hier opslaat.
+              </p>
+              <div class="mb-3">
+                <label class="form-label">Afspraken (WYSIWYG)</label>
+                <!-- Hidden textarea: holds HTML for form submission -->
+                <textarea name="custom_rules" id="id_custom_rules" style="display:none">{{ rules_form.custom_rules.value|default:'' }}</textarea>
+                <!-- Quill editor surface -->
+                <div id="quill-editor" class="quill-editor"></div>
+                <div class="form-hint mt-1">
+                  Zichtbaar op <a href="{% url 'public_rules' tournament.slug %}" target="_blank">/p/{{ tournament.slug }}/afspraken/</a>
+                </div>
+              </div>
+            </div>
+            <div class="card-footer">
+              <button type="submit" class="btn btn-primary">Afspraken opslaan</button>
+            </div>
+          </form>
+        </div>
+
+      </div><!-- /.tab-content -->
+    </div><!-- /.card -->
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/organizer-settings.js"></script>
+<!-- Quill WYSIWYG for Afspraken tab -->
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<script>
+(function() {
+  const editorEl = document.getElementById('quill-editor');
+  const hiddenTA = document.getElementById('id_custom_rules');
+  if (!editorEl || !hiddenTA) return;
+
+  const quill = new Quill('#quill-editor', {
+    theme: 'snow',
+    modules: {
+      toolbar: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline'],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        ['clean'],
+      ],
+    },
+  });
+
+  // Pre-fill with saved HTML (or auto-generated)
+  const initial = hiddenTA.value;
+  if (initial) quill.clipboard.dangerouslyPasteHTML(0, initial);
+
+  // On submit copy Quill HTML to hidden textarea
+  document.getElementById('rules-form').addEventListener('submit', () => {
+    hiddenTA.value = quill.root.innerHTML;
+  });
+})();
+</script>
+{% endblock %}

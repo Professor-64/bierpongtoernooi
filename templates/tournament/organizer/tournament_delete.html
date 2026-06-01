@@ -1,0 +1,32 @@
+{% extends "base_organizer.html" %}
+
+{% block title %}Verwijderen - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card border-danger">
+      <div class="card-header bg-danger text-white">
+        <h3 class="card-title text-white">Toernooi verwijderen</h3>
+      </div>
+      <div class="card-body">
+        <p>Ben je zeker dat je <strong>{{ tournament.name }}</strong> wil verwijderen?</p>
+        <p class="text-muted">Dit verwijdert ook alle ploegen, wedstrijden en standen. Dit kan niet ongedaan worden.</p>
+      </div>
+      <div class="card-footer">
+        <div class="row">
+          <div class="col">
+            <a href="{% url 'tournament_settings' tournament.slug %}" class="btn btn-ghost-secondary">Annuleren</a>
+          </div>
+          <div class="col-auto">
+            <form method="post">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-danger">Ja, verwijderen</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

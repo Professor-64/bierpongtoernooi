@@ -1,0 +1,18 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block title %}Timer - {{ tournament.name }}{% endblock %}
+
+
+
+{% block content %}
+<div class="timer-page">
+  <div class="timer-number" id="timer-display">--:--</div>
+  <div class="timer-label" id="timer-label">Ronde timer</div>
+  <div class="timer-status" id="timer-status">Laden...</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}' };</script>
+<script src="/static/js/public-timer.js"></script>
+{% endblock %}

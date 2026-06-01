@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Dranken beheren{% endblock %}
+
+{% block body %}
+<div class="page-wrapper">
+  <div class="page-header d-print-none">
+    <div class="container-xl">
+      <div class="row g-2 align-items-center">
+        <div class="col">
+          <h2 class="page-title">Dranken beheren</h2>
+          <div class="text-muted mt-1">Platform-brede drankenlijst</div>
+        </div>
+        <div class="col-auto ms-auto">
+          <a href="{% url 'home' %}" class="btn btn-ghost-secondary">← Terug</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="container-xl">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} alert-dismissible" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <div class="row row-cards">
+        <!-- Add drink form -->
+        <div class="col-lg-4">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Drank toevoegen</h3></div>
+            <div class="card-body">
+              <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_drink">
+                <div class="mb-3">
+                  <label class="form-label required">Naam</label>
+                  {% render_field form.name class="form-control" placeholder="bijv. Bier, Wijn, Cola, ..." %}
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Foto</label>
+                  {% render_field form.photo class="form-control" %}
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Toevoegen</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drinks list -->
+        <div class="col-lg-8">
+          {% if drinks %}
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Beschikbare dranken ({{ drinks.count }})</h3>
+              </div>
+              <div class="list-group list-group-flush">
+                {% for drink in drinks %}
+                <div class="list-group-item">
+                  <div class="d-flex align-items-center gap-3">
+                    {% if drink.photo %}
+                      <img src="{{ drink.photo.url }}" style="width:40px;height:40px;object-fit:cover;border-radius:6px;" alt="{{ drink.name }}">
+                    {% else %}
+                      <div style="width:40px;height:40px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="#94a3b8" fill="none">
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                          <path d="M5 11a7 7 0 0 1 14 0v7a1 1 0 0 1 -1 1h-12a1 1 0 0 1 -1 -1z"/>
+                          <path d="M10 16a1 1 0 0 0 4 0m-4 -5a1 1 0 0 1 4 0"/>
+                        </svg>
+                      </div>
+                    {% endif %}
+                    <div class="flex-fill">
+                      <strong>{{ drink.name }}</strong>
+                      {% if drink.created_by %}
+                        <div class="text-muted small">Toegevoegd door {{ drink.created_by.username }}</div>
+                      {% endif %}
+                    </div>
+                    <form method="post" class="d-inline"
+                          onsubmit="return confirm('Drank {{ drink.name }} verwijderen?')">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="delete_drink">
+                      <input type="hidden" name="drink_id" value="{{ drink.id }}">
+                      <button type="submit" class="btn btn-sm btn-ghost-danger">Verwijderen</button>
+                    </form>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% else %}
+            <div class="empty">
+              <p class="empty-title">Nog geen dranken</p>
+              <p class="empty-subtitle text-muted">Voeg je eerste drank toe via het formulier.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

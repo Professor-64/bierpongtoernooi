@@ -1,0 +1,9 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block title %}Afspraken - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="rules-wrap">
+  {{ content|safe }}
+</div>
+{% endblock %}

@@ -1,0 +1,235 @@
+/* ================================================================
+   organizer.css — styles for all organizer (dashboard) pages
+   ================================================================ */
+
+/* ── Sidebar layout fixes (base_organizer.html) ─────────────── */
+.navbar-vertical .navbar-brand-autodark a {
+  white-space: normal !important;
+  word-break: break-word;
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+}
+.navbar-vertical .navbar-brand-autodark .navbar-brand-image {
+  flex-shrink: 0;
+  margin-top: .1rem;
+}
+.navbar-vertical .navbar-brand-autodark span {
+  white-space: normal;
+  line-height: 1.3;
+}
+.page-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+.page-wrapper .page-body {
+  flex: 1;
+}
+
+/* ── Live panel — matches grid ───────────────────────────────── */
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--live-cols, 4), 1fr);
+  gap: 1rem;
+}
+@media (max-width: 768px) { .matches-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 480px) { .matches-grid { grid-template-columns: 1fr; } }
+
+/* Card states */
+.match-card { transition: box-shadow .2s; }
+.match-card.status-in_progress { border-left: 4px solid var(--tblr-warning); }
+.match-card.status-finished    { border-left: 4px solid var(--tblr-success); opacity: .75; }
+.match-card.status-scheduled   { border-left: 4px solid var(--tblr-secondary); }
+.match-card.is-hidden          { opacity: .45; border-left: 4px solid var(--tblr-danger) !important; }
+
+/* Table name */
+.table-name-label {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--tblr-primary);
+  letter-spacing: .02em;
+}
+
+/* Scores */
+.score-display {
+  font-size: 2.4rem;
+  font-weight: 800;
+  min-width: 56px;
+  text-align: center;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.score-btn {
+  width: 34px; height: 34px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 1.05rem; font-weight: 700;
+}
+.team-name { font-size: 1rem; font-weight: 600; }
+
+/* Timer bar */
+.timer-bar {
+  background: var(--tblr-card-bg, #fff);
+  border-radius: 8px;
+  padding: .5rem 1rem;
+  border: 1px solid var(--tblr-border-color);
+}
+.timer-val {
+  font-size: 1.6rem; font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: 4rem; text-align: center;
+}
+.timer-val.danger { color: var(--tblr-danger); }
+
+/* Table filter row */
+.btn-xs {
+  font-size: .7rem;
+  padding: .15rem .45rem;
+  line-height: 1.4;
+  border-radius: 4px;
+}
+.table-filter-row {
+  background: rgba(0,0,0,.03);
+  border-radius: 6px;
+  padding: .3rem .6rem;
+  border: 1px solid var(--tblr-border-color, #e6e7e9);
+}
+.table-select-inline {
+  font-size: .75rem;
+  padding: .15rem .3rem;
+  border-radius: 4px;
+  border: 1px solid var(--tblr-border-color);
+  background: transparent;
+  cursor: pointer;
+  max-width: 110px;
+}
+
+/* ── Display Group Manager (live.html KO/PO/FR tab) ─────────── */
+.dg-group-card {
+  border: 1px solid var(--tblr-border-color);
+  border-radius: .5rem;
+  margin-bottom: 1.1rem;
+}
+.dg-group-card.is-active {
+  border-color: var(--tblr-primary);
+  box-shadow: 0 0 0 2px rgba(32,107,196,.15);
+}
+.dg-group-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: .45rem .75rem;
+  background: var(--tblr-card-cap-bg, #f8f9fa);
+  border-radius: .375rem .375rem 0 0;
+  border-bottom: 1px solid var(--tblr-border-color);
+}
+.dg-group-card.is-active .dg-group-header {
+  background: rgba(32,107,196,.1);
+  border-bottom-color: var(--tblr-primary);
+}
+.dg-group-body,
+.dg-pool-zone {
+  padding: .6rem;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: .6rem;
+  min-height: 80px;
+}
+.dg-group-body.is-empty,
+.dg-pool-zone.is-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dg-pool-zone {
+  border: 2px dashed var(--tblr-border-color);
+  border-radius: .5rem;
+}
+.dg-group-body .match-card .card-header,
+.dg-pool-zone  .match-card .card-header { cursor: grab; }
+.dg-group-body .match-card .card-header:active,
+.dg-pool-zone  .match-card .card-header:active { cursor: grabbing; }
+
+/* Sortable ghost while dragging */
+.sortable-ghost { opacity: .35; }
+
+/* Swap-countdown: orange → red outline over 3 s */
+@keyframes dg-swap {
+  from { outline-color: var(--tblr-warning, #f59f00); }
+  to   { outline-color: var(--tblr-danger,  #d63939); }
+}
+.dg-swap-pending {
+  outline: 3px solid var(--tblr-warning, #f59f00);
+  outline-offset: 3px;
+  animation: dg-swap 3s linear forwards;
+  position: relative;
+  z-index: 2;
+}
+
+/* Duplicate table conflict warning */
+.match-card.dg-table-conflict {
+  outline: 2px solid var(--tblr-danger, #d63939);
+  outline-offset: -2px;
+}
+.match-card.dg-table-conflict .card-header::after {
+  content: '⚠ zelfde tafel';
+  color: var(--tblr-danger, #d63939);
+  font-size: .65rem;
+  font-weight: 600;
+  margin-left: .5rem;
+}
+
+/* ── Organizer tables — layout preview ───────────────────────── */
+.layout-preview {
+  display: grid;
+  grid-auto-rows: 70px;
+  gap: 8px;
+  padding: .75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  align-items: center;
+}
+.t-preview-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 70px;
+}
+.table-shape.horizontal {
+  width: 100%; height: 38px;
+  background: var(--tblr-primary, #206bc4);
+  color: white; border-radius: 5px;
+  font-size: .7rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 0 4px; overflow: hidden;
+}
+.table-shape.vertical {
+  width: 32px; height: 66px;
+  background: var(--tblr-primary, #206bc4);
+  color: white; border-radius: 5px;
+  font-size: .6rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  writing-mode: vertical-rl; text-orientation: mixed; overflow: hidden;
+}
+
+/* ── KO ranking modal ────────────────────────────────────────── */
+.ko-rank-row    { cursor: grab; user-select: none; }
+.ko-rank-row:active { cursor: grabbing; }
+.ko-rank-num    { width: 2rem; font-size: .8rem; }
+.ko-table-scroll { overflow-x: auto; }
+.ko-rank-table  { font-size: .85rem; }
+.ko-rank-table th:first-child { width: 2rem; }
+
+/* ── Stat color helpers (W/G/V/diff) — used in live modal ────── */
+.stat-win       { color: #16a34a; font-weight: 600; }
+.stat-draw      { color: #d97706; font-weight: 600; }
+.stat-loss      { color: #dc2626; font-weight: 600; }
+.stat-muted     { color: #64748b; }
+.stat-diff-pos  { color: #16a34a; font-weight: 600; }
+.stat-diff-neg  { color: #dc2626; font-weight: 600; }
+.stat-diff-zero { color: #64748b; font-weight: 600; }
+
+/* ── Quill WYSIWYG editor (settings — Afspraken tab) ─────────── */
+.quill-editor { min-height: 300px; font-size: 1rem; background: #fff; }

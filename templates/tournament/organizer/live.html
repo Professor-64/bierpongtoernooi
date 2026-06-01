@@ -1,0 +1,500 @@
+{% extends "base_organizer.html" %}
+
+{% block title %}Live toernooi paneel - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">Live toernooi paneel</h2>
+  </div>
+
+  {% if tournament.show_timer_in_live %}
+  <!-- Timer + Ronde knoppen -->
+  <div class="col-auto">
+    <div class="timer-bar d-flex align-items-center gap-3">
+      <div class="text-center">
+        <div class="text-muted small mb-0">Ronde timer</div>
+        <div class="timer-val {% if remaining_seconds <= 120 and tournament.round_is_active %}danger{% endif %}"
+             id="timer-display"
+             data-seconds="{{ remaining_seconds }}"
+             data-active="{{ tournament.round_is_active|lower }}">
+          {{ tournament.round_duration_minutes }}:00
+        </div>
+      </div>
+      <div class="d-flex flex-column gap-1">
+        {% if not tournament.round_is_active and tournament.round_elapsed_seconds == 0 %}
+        <form method="post" action="{% url 'start_round' tournament.slug %}" id="start-round-form">
+          {% csrf_token %}
+          <input type="hidden" name="round_number" value="{{ current_round|default:1 }}">
+          <button type="submit" class="btn btn-primary btn-sm">Ronde starten</button>
+        </form>
+        {% elif tournament.round_is_active %}
+        <form method="post" action="{% url 'timer_control' tournament.slug %}">
+          {% csrf_token %}
+          <div class="d-flex gap-1">
+            <button type="submit" name="action" value="stop" class="btn btn-sm btn-warning">Pauzeer</button>
+            <button type="submit" name="action" value="reset" class="btn btn-sm btn-ghost-secondary">Reset</button>
+          </div>
+        </form>
+        {% else %}
+        <form method="post" action="{% url 'timer_control' tournament.slug %}">
+          {% csrf_token %}
+          <div class="d-flex gap-1">
+            <button type="submit" name="action" value="resume" class="btn btn-sm btn-success">Hervatten</button>
+            <button type="submit" name="action" value="reset" class="btn btn-sm btn-ghost-secondary">Reset</button>
+          </div>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+{% if has_ko or has_playoff or has_final_ranking %}{% with has_post=True %}
+
+<!-- Rij 1: Tafelpagina fase-filter (links) + actieknoppen (rechts) -->
+{% if rr_rounds or has_post %}
+<div class="mt-3">
+  <div class="table-filter-row d-flex align-items-center justify-content-between gap-2 flex-wrap">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted" style="font-size:.7rem;white-space:nowrap">📺 Tafels:</span>
+      <div class="d-flex gap-1 flex-wrap" id="table-filter-btns">
+        <button onclick="setTableFilter('', this)"
+                class="btn btn-xs {% if not active_table_filter %}btn-primary{% else %}btn-ghost-secondary{% endif %}">
+          Auto
+        </button>
+        {% for r in rr_rounds %}
+        <button onclick="setTableFilter('rr_{{ r }}', this)"
+                class="btn btn-xs {% if active_table_filter == 'rr_'|add:r|stringformat:'s' %}btn-primary{% else %}btn-ghost-secondary{% endif %}">
+          R{{ r }}
+        </button>
+        {% endfor %}
+        {% if tournament.format == 'combined' or tournament.format == 'groups' %}
+        {% if has_post %}
+
+        <button onclick="setTableFilter('all_post', this)"
+                class="btn btn-xs {% if active_table_filter == 'all_post' %}btn-warning{% else %}btn-ghost-secondary{% endif %}">
+          {{ post_competition_label }}
+        </button>
+        {% endif %}
+        {% else %}
+          {% if has_playoff %}
+          <button onclick="setTableFilter('playoff', this)"
+                  class="btn btn-xs {% if active_table_filter == 'playoff' %}btn-info{% else %}btn-ghost-secondary{% endif %}">
+            Play-offs
+          </button>
+          {% endif %}
+          {% if has_ko %}
+          <button onclick="setTableFilter('knockout', this)"
+                  class="btn btn-xs {% if active_table_filter == 'knockout' %}btn-warning{% else %}btn-ghost-secondary{% endif %}">
+            Knock-out
+          </button>
+          {% endif %}
+          {% if has_final_ranking %}
+          <button onclick="setTableFilter('final_ranking', this)"
+                  class="btn btn-xs {% if active_table_filter == 'final_ranking' %}btn-secondary{% else %}btn-ghost-secondary{% endif %}">
+            Finale ranking
+          </button>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+    {% if can_advance_ko or can_advance_fr or has_ko or has_playoff or has_final_ranking %}
+    <div class="d-flex gap-2 flex-shrink-0">
+      {% if can_advance_ko %}
+      <button type="button" class="btn btn-xs btn-warning" onclick="openKoModal()">
+        Naar {{ post_competition_label }} →
+      </button>
+      {% elif has_ko or has_playoff or has_final_ranking %}
+      {% if tournament.format == 'combined' or tournament.format == 'groups' %}
+      <button type="button" class="btn btn-xs btn-ghost-secondary" onclick="openKoModal()">
+        ↺ Opnieuw aanmaken
+      </button>
+      {% endif %}
+      {% endif %}
+      {% if can_advance_fr %}
+      <form method="post" action="{% url 'schedule_view' tournament.slug %}"
+            onsubmit="return confirm('Finale ranking aanmaken voor alle ploegen?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="generate_final_ranking">
+        <button type="submit" class="btn btn-xs btn-outline-secondary">Naar finale ranking →</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Rij 2: Fase-tabladen -->
+<div class="row mt-2 align-items-end g-0" style="border-bottom: 2px solid var(--tblr-border-color, #e6e7e9);">
+  <div class="col">
+    <ul class="nav nav-tabs" style="border-bottom:none; gap:.15rem; margin-bottom:-2px;">
+      {% for r in rr_rounds %}
+      <li class="nav-item">
+        <a href="?ronde={{ r }}"
+           class="nav-link py-2 px-3 {% if not show_knockout and not show_playoff and not show_final_ranking and r == current_round %}active{% endif %}">
+          R{{ r }}
+        </a>
+      </li>
+      {% endfor %}
+      {% if tournament.format == 'combined' or tournament.format == 'groups' %}
+      {% if has_post %}
+
+      <li class="nav-item">
+        <a href="?fase=knockout"
+           class="nav-link py-2 px-3 {% if show_knockout or show_playoff or show_final_ranking %}active{% endif %}"
+           style="{% if show_knockout or show_playoff or show_final_ranking %}border-bottom-color:var(--tblr-warning);color:var(--tblr-warning){% else %}color:var(--tblr-muted){% endif %}">
+          {{ post_competition_label }}
+        </a>
+      </li>
+      {% endif %}
+      {% else %}
+        {% if has_ko %}
+        <li class="nav-item">
+          <a href="?fase=knockout"
+             class="nav-link py-2 px-3 {% if show_knockout %}active{% endif %}"
+             style="{% if show_knockout %}border-bottom-color:var(--tblr-warning);color:var(--tblr-warning){% else %}color:var(--tblr-muted){% endif %}">
+            Knock-out
+          </a>
+        </li>
+        {% endif %}
+        {% if has_playoff %}
+        <li class="nav-item">
+          <a href="?fase=playoff"
+             class="nav-link py-2 px-3 {% if show_playoff %}active{% endif %}"
+             style="{% if show_playoff %}border-bottom-color:var(--tblr-info);color:var(--tblr-info){% else %}color:var(--tblr-muted){% endif %}">
+            Play-offs
+          </a>
+        </li>
+        {% endif %}
+        {% if has_final_ranking %}
+        <li class="nav-item">
+          <a href="?fase=final_ranking"
+             class="nav-link py-2 px-3 {% if show_final_ranking %}active{% endif %}">
+            Finale ranking
+          </a>
+        </li>
+        {% endif %}
+      {% endif %}
+    </ul>
+  </div>
+</div>
+
+{% endwith %}{% else %}
+
+<!-- Geen post-competitie fases: enkel rondetabs tonen als die bestaan -->
+{% if rr_rounds %}
+{% if can_advance_ko or can_advance_fr %}
+<div class="mt-3">
+  <div class="table-filter-row d-flex align-items-center justify-content-between gap-2 flex-wrap">
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <span class="text-muted" style="font-size:.7rem;white-space:nowrap">📺 Tafels:</span>
+      <div class="d-flex gap-1 flex-wrap" id="table-filter-btns">
+        <button onclick="setTableFilter('', this)"
+                class="btn btn-xs {% if not active_table_filter %}btn-primary{% else %}btn-ghost-secondary{% endif %}">Auto</button>
+        {% for r in rr_rounds %}
+        <button onclick="setTableFilter('rr_{{ r }}', this)"
+                class="btn btn-xs {% if active_table_filter == 'rr_'|add:r|stringformat:'s' %}btn-primary{% else %}btn-ghost-secondary{% endif %}">R{{ r }}</button>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-shrink-0">
+      {% if can_advance_ko %}
+      <button type="button" class="btn btn-xs btn-warning" onclick="openKoModal()">
+        Naar {{ post_competition_label }} →
+      </button>
+      {% endif %}
+      {% if can_advance_fr %}
+      <form method="post" action="{% url 'schedule_view' tournament.slug %}"
+            onsubmit="return confirm('Finale ranking aanmaken?')">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="generate_final_ranking">
+        <button type="submit" class="btn btn-xs btn-outline-secondary">Naar finale ranking →</button>
+      </form>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="mt-3">
+  <div class="table-filter-row d-flex align-items-center gap-2 flex-wrap">
+    <span class="text-muted" style="font-size:.7rem;white-space:nowrap">📺 Tafels:</span>
+    <div class="d-flex gap-1 flex-wrap" id="table-filter-btns">
+      <button onclick="setTableFilter('', this)"
+              class="btn btn-xs {% if not active_table_filter %}btn-primary{% else %}btn-ghost-secondary{% endif %}">Auto</button>
+      {% for r in rr_rounds %}
+      <button onclick="setTableFilter('rr_{{ r }}', this)"
+              class="btn btn-xs {% if active_table_filter == 'rr_'|add:r|stringformat:'s' %}btn-primary{% else %}btn-ghost-secondary{% endif %}">R{{ r }}</button>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+<div class="row mt-2 align-items-end g-0" style="border-bottom: 2px solid var(--tblr-border-color, #e6e7e9);">
+  <div class="col">
+    <ul class="nav nav-tabs" style="border-bottom:none; gap:.15rem; margin-bottom:-2px;">
+      {% for r in rr_rounds %}
+      <li class="nav-item">
+        <a href="?ronde={{ r }}"
+           class="nav-link py-2 px-3 {% if r == current_round %}active{% endif %}">R{{ r }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block content %}
+
+{% if can_advance_ko or has_ko or has_playoff or has_final_ranking %}
+{% if tournament.format == 'combined' or tournament.format == 'groups' %}
+<div class="modal modal-blur fade" id="koModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">{{ post_competition_label }} — ranking bevestigen</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="ko-modal-body">
+        <div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+        <form method="post" action="{% url 'schedule_view' tournament.slug %}" id="ko-confirm-form"
+              onsubmit="_updateKoSlotBadges()">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="advance_knockout">
+          <input type="hidden" name="team_order" id="ko-team-order" value="">
+          <button type="submit" class="btn btn-warning">
+            ✓ Bevestigen en aanmaken
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% if show_post %}
+
+
+<div class="d-flex align-items-center justify-content-between mb-2 mt-1">
+  <span class="text-muted small fw-semibold">Weergavegroepen</span>
+  <button class="btn btn-xs btn-outline-primary" onclick="dgAddGroup('{{ tournament.slug }}')">
+    + Groep toevoegen
+  </button>
+</div>
+
+<div id="dg-groups-container">
+  {% for dg in display_groups %}
+  <div class="dg-group-card {% if dg.is_active %}is-active{% endif %}"
+       id="dg-group-{{ dg.id }}"
+       data-group-id="{{ dg.id }}">
+
+    <div class="dg-group-header">
+      <span class="fw-semibold small">{{ dg.name }}</span>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-xs {% if dg.is_active %}btn-primary{% else %}btn-ghost-secondary{% endif %}"
+                onclick="dgSetActive({{ dg.id }}, '{{ tournament.slug }}', this)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><path d="M22 12c-2.667 4.667-6 7-10 7s-7.333-2.333-10-7c2.667-4.667 6-7 10-7s7.333 2.333 10 7"/></svg>
+          {% if dg.is_active %}Op scherm{% else %}Toon{% endif %}
+        </button>
+        <button class="btn btn-xs btn-ghost-danger"
+                title="Verwijder (enkel leeg)"
+                onclick="dgDeleteGroup({{ dg.id }}, '{{ tournament.slug }}', this)">✕</button>
+      </div>
+    </div>
+
+    <div class="dg-group-body {% if not dg.sorted_matches %}is-empty{% endif %}"
+         id="dg-body-{{ dg.id }}"
+         data-group-id="{{ dg.id }}">
+      {% for match in dg.sorted_matches %}
+      {% include "tournament/organizer/_match_card.html" with match=match tournament=tournament all_tables=all_tables %}
+      {% empty %}
+      <span class="text-muted small dg-empty-placeholder">Sleep een wedstrijd hierheen</span>
+      {% endfor %}
+    </div>
+  </div>
+  {% empty %}
+  <div class="text-muted small text-center py-4" id="dg-no-groups-msg">
+    Nog geen groepen — klik op "+ Groep toevoegen".
+  </div>
+  {% endfor %}
+</div>
+
+<div class="mt-3 mb-2">
+  <div class="d-flex align-items-center gap-2 mb-2">
+    <span class="text-muted small fw-semibold">Niet-ingedeeld</span>
+    <span class="badge bg-secondary" id="dg-pool-count">{{ unassigned_post_matches|length }}</span>
+  </div>
+  <div class="dg-pool-zone {% if not unassigned_post_matches %}is-empty{% endif %}"
+       id="dg-pool-zone"
+       data-group-id="">
+    {% for match in unassigned_post_matches %}
+    {% include "tournament/organizer/_match_card.html" with match=match tournament=tournament all_tables=all_tables %}
+    {% empty %}
+    <span class="text-muted small" id="dg-pool-empty-msg">Alle wedstrijden zijn ingedeeld</span>
+    {% endfor %}
+  </div>
+</div>
+
+{% else %}
+
+{% if matches %}
+<div class="matches-grid" style="--live-cols:{{ tournament.table_display_cols }}">
+  {% for match in matches %}
+  {% include "tournament/organizer/_match_card.html" with match=match tournament=tournament all_tables=all_tables %}
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  <p class="empty-title">Geen wedstrijden voor deze weergave</p>
+  <p class="empty-subtitle text-muted">
+    <a href="{% url 'schedule_view' tournament.slug %}">Ga naar Schema</a> om wedstrijden te plannen.
+  </p>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% csrf_token %}
+<script>
+const LIVE_CONFIG = {
+  slug: '{{ tournament.slug }}',
+  cupCount: {{ tournament.cup_count }},
+  roundMinutes: {{ tournament.round_duration_minutes }},
+  scores: {
+    {% for match in matches %}{{ match.id }}: { score1: {{ match.score1 }}, score2: {{ match.score2 }} }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  }
+};
+</script>
+<script src="/static/js/organizer-live.js"></script>
+{% if show_post or can_advance_ko %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+{% endif %}
+{% if show_post %}
+<script src="/static/js/display-groups.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => DG.init('{{ tournament.slug }}', {{ all_tables|length }}));
+</script>
+{% endif %}
+
+{% if can_advance_ko or has_ko or has_playoff or has_final_ranking %}
+{% if tournament.format == 'combined' or tournament.format == 'groups' %}
+<script>
+let _koModalConfig = { ko_count: 0, po_count: 0, fr_count: 0 };
+let _koSortable = null;
+
+function openKoModal() {
+  const body = document.getElementById('ko-modal-body');
+  body.innerHTML = '<div class="text-center py-3"><div class="spinner-border spinner-border-sm text-secondary"></div> Laden…</div>';
+  const modalEl = document.getElementById('koModal');
+  const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+  modal.show();
+
+  fetch('/t/{{ tournament.slug }}/schema/ranking-modal/', {
+    headers: { 'X-CSRFToken': document.cookie.match(/csrftoken=([^;]+)/)?.[1] || '' }
+  })
+    .then(r => r.json())
+    .then(data => {
+      _koModalConfig = { ko_count: data.ko_count, po_count: data.po_count, fr_count: data.fr_count };
+      _renderKoList(data);
+    })
+    .catch(() => {
+      body.innerHTML = '<div class="alert alert-danger">Fout bij laden van ranking.</div>';
+    });
+}
+
+function _renderKoList(data) {
+  const body = document.getElementById('ko-modal-body');
+  const warn = data.rr_unfinished > 0
+    ? `<div class="alert alert-warning py-2 small mb-2">⚠ ${data.rr_unfinished} wedstrijd(en) nog niet afgespeeld</div>`
+    : '';
+
+  let rows = '';
+  data.teams.forEach((t, i) => {
+    const diff    = t.cup_diff >= 0 ? `+${t.cup_diff}` : String(t.cup_diff);
+    const diffCls = t.cup_diff > 0 ? 'stat-diff-pos' : t.cup_diff < 0 ? 'stat-diff-neg' : 'stat-diff-zero';
+    rows += `<tr data-team-id="${t.id}" class="ko-rank-row">
+      <td class="ko-rank-num text-center text-muted">${i + 1}</td>
+      <td class="fw-semibold">${t.name}</td>
+      <td class="text-center stat-win">${t.wins}</td>
+      <td class="text-center stat-draw">${t.draws}</td>
+      <td class="text-center stat-loss">${t.losses}</td>
+      <td class="text-center">${t.cups_scored}</td>
+      <td class="text-center stat-muted">${t.cups_conceded}</td>
+      <td class="text-center ${diffCls}">${diff}</td>
+      <td class="text-center fw-bold">${t.points}</td>
+      <td class="text-center"><span class="badge ko-slot-badge"></span></td>
+    </tr>`;
+  });
+
+  body.innerHTML = warn +
+    `<p class="text-muted small mb-2">Sleep rijen om de volgorde aan te passen bij gelijkstand.</p>
+    <div class="ko-table-scroll">
+    <table class="table table-sm table-hover mb-0 ko-rank-table">
+      <thead class="table-light"><tr>
+        <th>#</th><th>Ploeg</th>
+        <th class="text-center">W</th><th class="text-center">G</th><th class="text-center">V</th>
+        <th class="text-center">Bk+</th><th class="text-center">Bk−</th>
+        <th class="text-center">+/−</th><th class="text-center">Pts</th>
+        <th class="text-center">Slot</th>
+      </tr></thead>
+      <tbody id="ko-rank-list">${rows}</tbody>
+    </table></div>`;
+
+  _updateKoSlotBadges();
+
+  if (_koSortable) _koSortable.destroy();
+  _koSortable = Sortable.create(document.getElementById('ko-rank-list'), {
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd: _updateKoSlotBadges,
+  });
+}
+
+function _updateKoSlotBadges() {
+  const list = document.getElementById('ko-rank-list');
+  if (!list) return;
+  const items = Array.from(list.querySelectorAll('tr[data-team-id]'));
+  const { ko_count, po_count, fr_count } = _koModalConfig;
+
+  items.forEach((el, i) => {
+    // Update rank column
+    const rankCell = el.querySelector('td:first-child');
+    if (rankCell) rankCell.textContent = i + 1;
+
+    const badge = el.querySelector('.ko-slot-badge');
+    if (!badge) return;
+    if (i < ko_count) {
+      badge.className = 'badge bg-warning text-dark ko-slot-badge';
+      badge.textContent = 'KO';
+    } else if (i < ko_count + po_count) {
+      badge.className = 'badge bg-info text-dark ko-slot-badge';
+      badge.textContent = 'PO';
+    } else if (fr_count > 0) {
+      badge.className = 'badge bg-secondary ko-slot-badge';
+      badge.textContent = 'FR';
+    } else {
+      badge.className = 'badge bg-light text-muted ko-slot-badge';
+      badge.textContent = '—';
+    }
+  });
+
+  // Keep hidden input in sync
+  const order = items.map(el => parseInt(el.dataset.teamId));
+  document.getElementById('ko-team-order').value = JSON.stringify(order);
+}
+</script>
+{% endif %}
+{% endif %}
+{% endblock %}

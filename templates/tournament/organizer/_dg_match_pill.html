@@ -1,0 +1,22 @@
+<div class="dg-match-pill status-{{ match.status }}"
+     id="dg-pill-{{ match.id }}"
+     data-match-id="{{ match.id }}"
+     data-table-id="{{ match.table.id|default:'' }}">
+  {% if match.status == 'in_progress' %}
+  <span class="dg-pill-status badge bg-warning text-dark" style="font-size:.55rem;padding:.1rem .3rem">▶</span>
+  {% elif match.status == 'finished' %}
+  <span class="dg-pill-status badge bg-success" style="font-size:.55rem;padding:.1rem .3rem">✓</span>
+  {% endif %}
+  <div class="dg-pill-teams">
+    {{ match.team1.name|default:"TBD" }} – {{ match.team2.name|default:"TBD" }}
+  </div>
+  <div class="dg-pill-meta">{{ match.get_phase_display }}</div>
+  <select class="dg-pill-table-sel"
+          onchange="dgSetTable({{ match.id }}, this.value, '{{ tournament.slug }}')"
+          onclick="event.stopPropagation()">
+    <option value="">— tafel —</option>
+    {% for t in all_tables %}
+    <option value="{{ t.id }}" {% if match.table and match.table.id == t.id %}selected{% endif %}>{{ t.name }}</option>
+    {% endfor %}
+  </select>
+</div>

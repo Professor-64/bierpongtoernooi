@@ -1,0 +1,191 @@
+{% extends "base_organizer.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Ploegen - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">Ploegen</h2>
+    <div class="text-muted mt-1">{{ teams.count }} ploeg{{ teams.count|pluralize:"en" }}</div>
+  </div>
+  <div class="col-auto ms-auto">
+    <a href="{% url 'drinks_manage' %}" class="btn btn-ghost-secondary btn-sm">Dranken beheren</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row row-cards">
+  <!-- Add team form -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Ploeg toevoegen</h3></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_team">
+          <div class="mb-3">
+            <label class="form-label required">Ploegnaam</label>
+            {% render_field form.name class="form-control" placeholder="De Kampioenen" %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Dranksoort</label>
+            {% render_field form.drink class="form-select" %}
+            {% if not drinks %}
+              <div class="form-hint">
+                <a href="{% url 'drinks_manage' %}">Voeg eerst dranken toe</a>
+              </div>
+            {% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Spelers (één per lijn)</label>
+            {% render_field form.players_text class="form-control" rows="3" %}
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Toevoegen</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teams list -->
+  <div class="col-lg-8">
+    {% if teams %}
+      <div class="row row-cards">
+        {% for team in teams %}
+        <div class="col-md-6">
+          <div class="card">
+            <!-- Team header -->
+            <div class="card-header">
+              <div class="d-flex align-items-center gap-2 flex-fill">
+                <h3 class="card-title mb-0">{{ team.name }}</h3>
+                <span class="text-muted small">{{ team.drink.name|default:"" }}</span>
+              </div>
+              <div class="card-options">
+                <button class="btn btn-sm btn-ghost-secondary"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#edit-team-{{ team.id }}"
+                        title="Bewerken">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/>
+                    <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/>
+                  </svg>
+                </button>
+                <form method="post" class="d-inline"
+                      onsubmit="return confirm('Ploeg {{ team.name }} verwijderen?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_team">
+                  <input type="hidden" name="team_id" value="{{ team.id }}">
+                  <button type="submit" class="btn btn-sm btn-ghost-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <line x1="4" y1="7" x2="20" y2="7"/>
+                      <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/>
+                      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/>
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            <!-- Inline edit form (collapsed) -->
+            <div class="collapse" id="edit-team-{{ team.id }}">
+              <div class="card-body border-bottom bg-light py-2">
+                <form method="post" class="row g-2 align-items-end">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="edit_team">
+                  <input type="hidden" name="team_id" value="{{ team.id }}">
+                  <div class="col">
+                    <label class="form-label form-label-sm mb-1">Naam</label>
+                    <input type="text" name="name" class="form-control form-control-sm"
+                           value="{{ team.name }}" required>
+                  </div>
+                  <div class="col">
+                    <label class="form-label form-label-sm mb-1">Drank</label>
+                    <select name="drink_id" class="form-select form-select-sm">
+                      <option value="">— Geen —</option>
+                      {% for drink in drinks %}
+                        <option value="{{ drink.id }}" {% if team.drink and team.drink.id == drink.id %}selected{% endif %}>
+                          {{ drink.name }}
+                        </option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Opslaan</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            <!-- Players body -->
+            <div class="card-body py-2">
+              {% if team.players.all %}
+                <div class="divide-y">
+                  {% for player in team.players.all %}
+                  <div class="row py-1 align-items-center" id="player-row-{{ player.id }}">
+                    <div class="col">
+                      <span class="player-name-text">{{ player.name }}</span>
+                      <!-- Inline player edit (hidden initially) -->
+                      <form method="post" class="player-edit-form d-none" style="display:none!important">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="edit_player">
+                        <input type="hidden" name="player_id" value="{{ player.id }}">
+                        <div class="input-group input-group-sm">
+                          <input type="text" name="name" class="form-control"
+                                 value="{{ player.name }}" required>
+                          <button type="submit" class="btn btn-primary btn-sm">OK</button>
+                          <button type="button" class="btn btn-ghost-secondary btn-sm"
+                                  onclick="cancelPlayerEdit({{ player.id }})">x</button>
+                        </div>
+                      </form>
+                    </div>
+                    <div class="col-auto d-flex gap-1">
+                      <button type="button" class="btn btn-sm btn-ghost-secondary py-0 px-1"
+                              onclick="startPlayerEdit({{ player.id }})" title="Bewerken">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/><path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/></svg>
+                      </button>
+                      <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_player">
+                        <input type="hidden" name="player_id" value="{{ player.id }}">
+                        <button type="submit" class="btn btn-sm btn-ghost-secondary py-0 px-1">x</button>
+                      </form>
+                    </div>
+                  </div>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <small class="text-muted">Geen spelers</small>
+              {% endif %}
+            </div>
+
+            <!-- Add player footer -->
+            <div class="card-footer py-2">
+              <form method="post" class="d-flex gap-2">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_player">
+                <input type="hidden" name="team_id" value="{{ team.id }}">
+                <input type="text" name="player_name" class="form-control form-control-sm"
+                       placeholder="Naam speler">
+                <button type="submit" class="btn btn-sm btn-ghost-primary">+</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty">
+        <p class="empty-title">Nog geen ploegen</p>
+        <p class="empty-subtitle text-muted">Voeg je eerste ploeg toe via het formulier links.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/organizer-teams.js"></script>
+{% endblock %}

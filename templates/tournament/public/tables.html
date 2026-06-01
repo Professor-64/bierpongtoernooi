@@ -1,0 +1,27 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block title %}Tafels - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="mb-0" style="color:#1e293b;">Tafels</h2>
+  <div class="text-muted small" id="last-update"></div>
+</div>
+<div id="tables-grid" class="tables-grid">
+  <div style="grid-column:1/-1;text-align:center;color:#94a3b8;padding:3rem 0">Laden...</div>
+</div>
+
+<!-- Tafel modal -->
+<div id="table-modal" class="pub-modal" onclick="closeTableModal(event)">
+  <div class="pub-modal-table" onclick="event.stopPropagation()">
+    <div id="modal-card-wrap"></div>
+    <div id="modal-timer-float" class="pub-modal-timer" style="display:none"></div>
+    <button class="pub-modal-close" onclick="_doClose()" aria-label="Sluiten">×</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}' };</script>
+<script src="/static/js/public-tables.js"></script>
+{% endblock %}

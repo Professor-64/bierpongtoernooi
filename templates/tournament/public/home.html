@@ -1,0 +1,41 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block content %}
+<div class="text-center py-5">
+  <h1 class="display-5 fw-bold mb-5" style="color:#1e293b;">{{ tournament.name }}</h1>
+  <div class="row justify-content-center g-3">
+    <div class="col-md-3 col-6">
+      <a href="{% url 'public_scoreboard' tournament.slug %}"
+         class="d-block text-decoration-none p-4 bg-white rounded-3 border"
+         style="box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div class="fw-bold" style="color:#1e293b;">Scorebord</div>
+        <div class="text-muted small">Live wedstrijden</div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'public_standings' tournament.slug %}"
+         class="d-block text-decoration-none p-4 bg-white rounded-3 border"
+         style="box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div class="fw-bold" style="color:#1e293b;">Stand</div>
+        <div class="text-muted small">Tussenstand</div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'public_tables' tournament.slug %}"
+         class="d-block text-decoration-none p-4 bg-white rounded-3 border"
+         style="box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div class="fw-bold" style="color:#1e293b;">Tafels</div>
+        <div class="text-muted small">Wie speelt waar</div>
+      </a>
+    </div>
+    <div class="col-md-3 col-6">
+      <a href="{% url 'public_timer' tournament.slug %}"
+         class="d-block text-decoration-none p-4 bg-white rounded-3 border"
+         style="box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div class="fw-bold" style="color:#1e293b;">Timer</div>
+        <div class="text-muted small">Ronde aftelling</div>
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

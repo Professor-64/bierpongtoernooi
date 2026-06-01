@@ -1,0 +1,182 @@
+{% extends "base_organizer.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Tafels - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">Tafels</h2>
+    <div class="text-muted mt-1">{{ tables.count }} tafel{{ tables.count|pluralize:"s" }}</div>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Layout settings -->
+<div class="card mb-4">
+  <div class="card-header"><h3 class="card-title">Lay-out &amp; Orientatie</h3></div>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="update_layout">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Aantal kolommen</label>
+          <input type="number" name="table_display_cols" class="form-control"
+                 value="{{ tournament.table_display_cols }}" min="1" max="8" id="cols-input">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Orientatie</label>
+          <select name="table_orientation" class="form-select" id="orient-select">
+            <option value="horizontal" {% if tournament.table_orientation == 'horizontal' %}selected{% endif %}>
+              Horizontaal — ploegen links / rechts
+            </option>
+            <option value="vertical" {% if tournament.table_orientation == 'vertical' %}selected{% endif %}>
+              Verticaal — ploegen boven / onder
+            </option>
+          </select>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary">Opslaan</button>
+        </div>
+        <div class="col text-muted small">Wijzigt de orientatie van alle bestaande tafels.</div>
+      </div>
+    </div>
+  </form>
+
+  {% if tables %}
+  <div class="card-body border-top pt-3">
+    <div class="text-muted small mb-2 fw-semibold">
+      Voorbeeld grid — {{ tables.count }} tafels, {{ tournament.table_display_cols }} kolom{{ tournament.table_display_cols|pluralize:"men" }},
+      {% if tournament.table_orientation == 'horizontal' %}horizontaal{% else %}verticaal{% endif %}
+    </div>
+    <div class="layout-preview" id="layout-preview"
+         style="grid-template-columns: repeat({{ tournament.table_display_cols }}, 1fr)">
+      {% for table in tables %}
+      <div class="t-preview-cell">
+        <div class="table-shape {{ tournament.table_orientation }}">{{ table.name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<div class="row row-cards">
+  <!-- Add forms -->
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header"><h3 class="card-title">Meerdere tafels toevoegen</h3></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_multiple">
+          <div class="mb-3">
+            <label class="form-label">Aantal tafels</label>
+            <input type="number" name="count" class="form-control" value="4" min="1" max="20">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Prefix naam</label>
+            <input type="text" name="prefix" class="form-control" value="Tafel">
+          </div>
+          <button type="submit" class="btn btn-primary w-100">Toevoegen</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Tafel toevoegen</h3></div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="add_table">
+          <div class="mb-3">
+            <label class="form-label required">Nummer</label>
+            {% render_field form.number class="form-control" type="number" min="1" %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">Naam</label>
+            {% render_field form.name class="form-control" placeholder="Tafel A" %}
+          </div>
+          <button type="submit" class="btn btn-outline-primary w-100">Toevoegen</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table list with inline edit -->
+  <div class="col-lg-8">
+    {% if tables %}
+    <div class="card">
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Naam</th>
+              <th>Orientatie</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for table in tables %}
+            <!-- Normal row -->
+            <tr id="row-{{ table.id }}">
+              <td><span class="badge bg-primary-lt">{{ table.number }}</span></td>
+              <td><strong>{{ table.name }}</strong></td>
+              <td class="text-muted small">{{ table.get_orientation_display }}</td>
+              <td class="text-end">
+                <button type="button" class="btn btn-sm btn-ghost-secondary me-1"
+                        onclick="toggleTableEdit({{ table.id }})">Bewerken</button>
+                <form method="post" class="d-inline" onsubmit="return confirm('Tafel verwijderen?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete_table">
+                  <input type="hidden" name="table_id" value="{{ table.id }}">
+                  <button type="submit" class="btn btn-sm btn-ghost-danger">Verwijder</button>
+                </form>
+              </td>
+            </tr>
+            <!-- Edit row (hidden) -->
+            <tr id="edit-row-{{ table.id }}" style="display:none">
+              <td colspan="4" class="bg-light py-2 px-3">
+                <form method="post" class="row g-2 align-items-end">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="edit_table">
+                  <input type="hidden" name="table_id" value="{{ table.id }}">
+                  <div class="col-auto">
+                    <label class="form-label form-label-sm mb-1">Nummer</label>
+                    <input type="number" name="number" class="form-control form-control-sm"
+                           value="{{ table.number }}" min="1" style="width:70px">
+                  </div>
+                  <div class="col">
+                    <label class="form-label form-label-sm mb-1">Naam</label>
+                    <input type="text" name="name" class="form-control form-control-sm"
+                           value="{{ table.name }}" required>
+                  </div>
+                  <div class="col-auto">
+                    <button type="submit" class="btn btn-sm btn-primary">Opslaan</button>
+                    <button type="button" class="btn btn-sm btn-ghost-secondary"
+                            onclick="toggleTableEdit({{ table.id }})">Annuleer</button>
+                  </div>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty">
+      <p class="empty-title">Nog geen tafels</p>
+      <p class="empty-subtitle text-muted">Voeg tafels toe via het formulier.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="/static/js/organizer-tables.js"></script>
+{% endblock %}

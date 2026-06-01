@@ -1,0 +1,425 @@
+{% extends "base_organizer.html" %}
+{% load tournament_tags %}
+
+{% block title %}Schema - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">Wedstrijdschema</h2>
+    <div class="text-muted mt-1">
+      {{ tournament.get_format_display }}
+      {% if rr_total > 0 %}&nbsp;&mdash;&nbsp;{{ rr_done }}/{{ rr_total }} poulewedstrijden afgespeeld{% endif %}
+    </div>
+  </div>
+  <div class="col-auto ms-auto d-flex gap-2">
+
+    {% if can_advance %}
+    {# Combined: advance round-robin → knockout #}
+    <form method="post" onsubmit="return confirm('{{ post_competition_label }} genereren op basis van de huidige stand?')">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="advance_knockout">
+      <button type="submit" class="btn btn-warning">Naar {{ post_competition_label }} →</button>
+    </form>
+    {% endif %}
+
+    {% if tournament.format == 'knockout' %}
+    {# Pure knockout #}
+    <form method="post" onsubmit="return confirm('Knock-out bracket aanmaken (huidige wedstrijden worden verwijderd)?')">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generate">
+      <button type="submit" class="btn btn-primary">
+        {% if ko_by_phase %}Bracket heraanmaken{% else %}Knock-out bracket aanmaken{% endif %}
+      </button>
+    </form>
+    {% elif tournament.format == 'groups' %}
+    {# Groups format #}
+    <form method="post" onsubmit="return confirm('Pouleronde aanmaken? ({{ tournament.groups_count }} poules — bestaande wedstrijden worden verwijderd)')">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generate">
+      <button type="submit" class="btn btn-primary">
+        {% if group_total > 0 %}Pouleronde heraanmaken{% else %}Pouleronde aanmaken{% endif %}
+      </button>
+    </form>
+    {% else %}
+    {# Competitiefase or combined #}
+    <form method="post" onsubmit="return confirm('Competitiefase aanmaken (huidige wedstrijden worden verwijderd)?')">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="generate">
+      <button type="submit" class="btn btn-primary">
+        {% if rr_total > 0 %}Competitiefase heraanmaken{% else %}Competitiefase aanmaken{% endif %}
+      </button>
+    </form>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if not rounds and not groups_schedule and not ko_by_phase and not playoff_matches and not final_ranking_matches %}
+<div class="empty">
+  <p class="empty-title">Nog geen schema</p>
+  <p class="empty-subtitle text-muted">
+    {% if tournament.format == 'knockout' %}
+      Zorg dat je minstens 2 ploegen en 1 tafel hebt, klik dan op "Knock-out bracket aanmaken".
+    {% elif tournament.format == 'groups' %}
+      Zorg dat je minstens 2 ploegen en 1 tafel hebt, klik dan op "Pouleronde aanmaken".
+    {% else %}
+      Zorg dat je minstens 2 ploegen en 1 tafel hebt, klik dan op "Competitiefase aanmaken".
+    {% endif %}
+  </p>
+</div>
+{% endif %}
+
+<!-- Poule-overzicht bovenaan -->
+{% if groups_schedule %}
+<div class="row row-cards mb-4">
+  {% for grp in groups_schedule %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title">{{ grp.group.name }}</h4>
+        <div class="card-options">
+          <span class="badge bg-secondary-lt">{{ grp.teams|length }} ploeg{{ grp.teams|length|pluralize:"en" }}</span>
+        </div>
+      </div>
+      <div class="list-group list-group-flush">
+        {% for team in grp.teams %}
+        <div class="list-group-item py-2">{{ team.name }}</div>
+        {% empty %}
+        <div class="list-group-item text-muted py-2"><em>Nog geen ploegen toegewezen</em></div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Pouleronde wedstrijden -->
+{% if groups_schedule %}
+{% for grp in groups_schedule %}
+<h3 class="mt-4 mb-3">{{ grp.group.name }}</h3>
+{% for round_num, matches in grp.rounds.items %}
+<div class="card mb-3">
+  <div class="card-header">
+    <h4 class="card-title">Ronde {{ round_num }}</h4>
+    <div class="card-options">
+      <span class="text-muted small">{{ matches|length }} wedstrijd{{ matches|length|pluralize:"en" }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr><th>Tafel</th><th>Ploeg 1</th><th class="text-center">Score</th><th>Ploeg 2</th><th>Status</th></tr>
+      </thead>
+      <tbody>
+        {% for match in matches %}
+        <tr>
+          <td>{% if match.table %}<span class="badge bg-secondary-lt">{{ match.table.name }}</span>{% else %}-{% endif %}</td>
+          <td>
+            {% if match.status == 'finished' and match.score1 > match.score2 %}<strong class="text-success">{{ match.team1.name|default:"TBD" }}</strong>
+            {% else %}{{ match.team1.name|default:"TBD" }}{% endif %}
+          </td>
+          <td class="text-center">
+            {% if match.status == 'finished' or match.status == 'in_progress' %}<strong>{{ match.score1 }} – {{ match.score2 }}</strong>
+            {% else %}<span class="text-muted">vs</span>{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' and match.score2 > match.score1 %}<strong class="text-success">{{ match.team2.name|default:"TBD" }}</strong>
+            {% else %}{{ match.team2.name|default:"TBD" }}{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' %}<span class="badge bg-success-lt">Afgespeeld</span>
+            {% elif match.status == 'in_progress' %}<span class="badge bg-warning-lt">Bezig</span>
+            {% else %}<span class="badge bg-secondary-lt">Gepland</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endfor %}
+{% endif %}
+
+<!-- Competitiefase rounds -->
+{% if rounds %}
+<h3 class="mb-3">Competitiefase</h3>
+{% for round_num, matches in rounds.items %}
+<div class="card mb-3">
+  <div class="card-header">
+    <h4 class="card-title">Ronde {{ round_num }}</h4>
+    <div class="card-options">
+      <span class="text-muted small">{{ matches|length }} wedstrijd{{ matches|length|pluralize:"en" }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Tafel</th>
+          <th>Ploeg 1</th>
+          <th class="text-center">Score</th>
+          <th>Ploeg 2</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in matches %}
+        <tr>
+          <td>
+            {% if match.table %}
+              <span class="badge bg-secondary-lt">{{ match.table.name }}</span>
+            {% else %}-{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' and match.score1 > match.score2 %}
+              <strong class="text-success">{{ match.team1.name|default:"TBD" }}</strong>
+            {% else %}
+              {{ match.team1.name|default:"TBD" }}
+            {% endif %}
+          </td>
+          <td class="text-center">
+            {% if match.status == 'finished' or match.status == 'in_progress' %}
+              <strong>{{ match.score1 }} – {{ match.score2 }}</strong>
+            {% else %}
+              <span class="text-muted">vs</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' and match.score2 > match.score1 %}
+              <strong class="text-success">{{ match.team2.name|default:"TBD" }}</strong>
+            {% else %}
+              {{ match.team2.name|default:"TBD" }}
+            {% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' %}
+              <span class="badge bg-success-lt">Afgespeeld</span>
+            {% elif match.status == 'in_progress' %}
+              <span class="badge bg-warning-lt">Bezig</span>
+            {% else %}
+              <span class="badge bg-secondary-lt">Gepland</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<!-- Knockout phase -->
+{% if ko_by_phase %}
+<h3 class="mt-4 mb-3">Knock-out fase</h3>
+{% for phase in phase_order %}
+{% with matches=ko_by_phase|default:"" %}
+{% endwith %}
+{% if phase in ko_by_phase %}
+<div class="card mb-3">
+  <div class="card-header">
+    <h4 class="card-title">
+      {% if phase == 'quarterfinal' %}Kwartfinales
+      {% elif phase == 'semifinal' %}Halve finales
+      {% elif phase == 'third_place' %}Kleine finale (3e/4e)
+      {% elif phase == 'final' %}Finale
+      {% endif %}
+    </h4>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Tafel</th>
+          <th>Ploeg 1</th>
+          <th class="text-center">Score</th>
+          <th>Ploeg 2</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in ko_by_phase|get_item:phase %}
+        <tr>
+          <td>
+            {% if match.table %}<span class="badge bg-secondary-lt">{{ match.table.name }}</span>{% else %}-{% endif %}
+          </td>
+          <td>
+            {% if match.team1 %}
+              {% if match.status == 'finished' and match.score1 > match.score2 %}
+                <strong class="text-success">{{ match.team1.name }}</strong>
+              {% else %}{{ match.team1.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if match.status != 'scheduled' %}
+              <strong>{{ match.score1 }} – {{ match.score2 }}</strong>
+            {% else %}
+              <span class="text-muted">vs</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if match.team2 %}
+              {% if match.status == 'finished' and match.score2 > match.score1 %}
+                <strong class="text-success">{{ match.team2.name }}</strong>
+              {% else %}{{ match.team2.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' %}
+              <span class="badge bg-success-lt">Afgespeeld</span>
+            {% elif match.status == 'in_progress' %}
+              <span class="badge bg-warning-lt">Bezig</span>
+            {% else %}
+              <span class="badge bg-secondary-lt">Gepland</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+<!-- Play-offs -->
+{% if playoff_matches %}
+<h3 class="mt-4 mb-3">Play-offs</h3>
+<div class="card mb-3">
+  <div class="card-header">
+    <h4 class="card-title">Play-off wedstrijden</h4>
+    <div class="card-options">
+      <span class="text-muted small">{{ playoff_matches.count }} wedstrijd{{ playoff_matches.count|pluralize:"en" }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tafel</th>
+          <th>Ploeg 1</th>
+          <th class="text-center">Score</th>
+          <th>Ploeg 2</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in playoff_matches %}
+        <tr>
+          <td><span class="text-muted">{{ match.bracket_slot }}</span></td>
+          <td>
+            {% if match.table %}<span class="badge bg-secondary-lt">{{ match.table.name }}</span>{% else %}-{% endif %}
+          </td>
+          <td>
+            {% if match.team1 %}
+              {% if match.status == 'finished' and match.score1 > match.score2 %}
+                <strong class="text-success">{{ match.team1.name }}</strong>
+              {% else %}{{ match.team1.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if match.status != 'scheduled' %}
+              <strong>{{ match.score1 }} – {{ match.score2 }}</strong>
+            {% else %}
+              <span class="text-muted">vs</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if match.team2 %}
+              {% if match.status == 'finished' and match.score2 > match.score1 %}
+                <strong class="text-success">{{ match.team2.name }}</strong>
+              {% else %}{{ match.team2.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' %}
+              <span class="badge bg-success-lt">Afgespeeld</span>
+            {% elif match.status == 'in_progress' %}
+              <span class="badge bg-warning-lt">Bezig</span>
+            {% else %}
+              <span class="badge bg-secondary-lt">Gepland</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Finale ranking -->
+{% if final_ranking_matches %}
+<h3 class="mt-4 mb-3">Finale ranking</h3>
+<div class="card mb-3">
+  <div class="card-header">
+    <h4 class="card-title">Finale ranking wedstrijden</h4>
+    <div class="card-options">
+      <span class="text-muted small">{{ final_ranking_matches.count }} wedstrijd{{ final_ranking_matches.count|pluralize:"en" }}</span>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Tafel</th>
+          <th>Ploeg 1</th>
+          <th class="text-center">Score</th>
+          <th>Ploeg 2</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for match in final_ranking_matches %}
+        <tr>
+          <td><span class="text-muted">{{ match.bracket_slot }}</span></td>
+          <td>
+            {% if match.table %}<span class="badge bg-secondary-lt">{{ match.table.name }}</span>{% else %}-{% endif %}
+          </td>
+          <td>
+            {% if match.team1 %}
+              {% if match.status == 'finished' and match.score1 > match.score2 %}
+                <strong class="text-success">{{ match.team1.name }}</strong>
+              {% else %}{{ match.team1.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td class="text-center">
+            {% if match.status != 'scheduled' %}
+              <strong>{{ match.score1 }} – {{ match.score2 }}</strong>
+            {% else %}
+              <span class="text-muted">vs</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if match.team2 %}
+              {% if match.status == 'finished' and match.score2 > match.score1 %}
+                <strong class="text-success">{{ match.team2.name }}</strong>
+              {% else %}{{ match.team2.name }}{% endif %}
+            {% else %}<span class="text-muted">TBD</span>{% endif %}
+          </td>
+          <td>
+            {% if match.status == 'finished' %}
+              <span class="badge bg-success-lt">Afgespeeld</span>
+            {% elif match.status == 'in_progress' %}
+              <span class="badge bg-warning-lt">Bezig</span>
+            {% else %}
+              <span class="badge bg-secondary-lt">Gepland</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

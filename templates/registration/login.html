@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Inloggen - Bierpongtoernooi{% endblock %}
+
+{% block body_class %}d-flex flex-column{% endblock %}
+
+{% block body %}
+<div class="page page-center">
+  <div class="container container-tight py-4">
+    <div class="text-center mb-4">
+      <h1 class="display-5 fw-bold">Bierpongtoernooi</h1>
+      <p class="text-muted">Beheer jouw toernooi</p>
+    </div>
+    <div class="card card-md">
+      <div class="card-body">
+        <h2 class="h2 text-center mb-4">Inloggen</h2>
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
+          {% if form.errors %}
+            <div class="alert alert-danger mb-3">
+              Gebruikersnaam of wachtwoord incorrect.
+            </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label">Gebruikersnaam</label>
+            <input type="text" name="username" class="form-control" placeholder="gebruikersnaam"
+                   autofocus autocomplete="off" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Wachtwoord</label>
+            <div class="input-group input-group-flat">
+              <input type="password" name="password" class="form-control" placeholder="wachtwoord"
+                     autocomplete="off" required>
+            </div>
+          </div>
+          <div class="form-footer">
+            <button type="submit" class="btn btn-primary w-100">Inloggen</button>
+          </div>
+          <input type="hidden" name="next" value="{{ next }}">
+        </form>
+      </div>
+    </div>
+    <div class="text-center text-muted mt-3">
+      <small>Voor toegang heb je een account nodig van de beheerder.</small>
+    </div>
+  </div>
+</div>
+{% endblock %}

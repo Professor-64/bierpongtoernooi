@@ -1,0 +1,95 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block title %}Stand - {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="text-end text-muted small mb-3" id="last-update"></div>
+
+<div id="bracket-section" style="display:none" class="mb-4">
+  <h4 class="mb-3 fw-bold section-heading">
+    Knockoutfase
+    <button class="section-heading-btn" onclick="standingsOpenModal('bracket')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Volledig scherm
+    </button>
+  </h4>
+  <div class="bracket-wrap">
+    <div id="bracket-render"></div>
+  </div>
+</div>
+
+<div id="playoff-section" style="display:none" class="mb-4">
+  <h4 class="mb-3 fw-bold section-heading">
+    Play-offs
+    <button class="section-heading-btn" onclick="standingsOpenModal('playoff')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Volledig scherm
+    </button>
+  </h4>
+  <div id="playoff-render"></div>
+</div>
+
+<div id="final-ranking-section" style="display:none" class="mb-4">
+  <h4 class="mb-3 fw-bold section-heading">
+    Finale ranking
+    <button class="section-heading-btn" onclick="standingsOpenModal('final_ranking')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Volledig scherm
+    </button>
+  </h4>
+  <div id="final-ranking-render"></div>
+</div>
+
+<div id="groups-section" style="display:none"></div>
+
+<div id="standings-section">
+  <h4 class="mb-3 fw-bold section-heading">
+    <span id="standings-title">Competitiefase</span>
+    <button class="section-heading-btn" onclick="standingsOpenModal('standings')">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      Volledig scherm
+    </button>
+  </h4>
+  <table class="standings-table">
+    <thead>
+      <tr>
+        <th style="width:2.5rem">#</th>
+        <th>Ploeg</th>
+        <th class="text-center">Gesp.</th>
+        <th class="text-center">W</th>
+        <th class="text-center">G</th>
+        <th class="text-center">V</th>
+        <th class="text-center">Bk+</th>
+        <th class="text-center">Bk-</th>
+        <th class="text-center">+/−</th>
+        <th class="text-center">Pts</th>
+      </tr>
+    </thead>
+    <tbody id="standings-body">
+      <tr><td colspan="10" class="text-center text-muted py-4">Laden...</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Standings modal -->
+<div id="standings-modal" class="pub-modal" onclick="standingsCloseModal(event)">
+  <div class="stn-modal-wrap" id="standings-modal-wrap" onclick="event.stopPropagation()">
+    <div class="stn-modal-body" id="standings-modal-content"></div>
+    <div class="pub-modal-timer" id="standings-modal-timer" style="display:none"></div>
+    <button class="pub-modal-close" onclick="standingsCloseModal()" aria-label="Sluiten">×</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PUBLIC_CONFIG = {
+  slug: '{{ tournament.slug }}',
+  format: '{{ tournament.format }}',
+  advLine: {{ tournament.knockout_advancement }},
+  koPerGroup: {{ tournament.groups_ko_per_group }},
+  poPerGroup: {{ tournament.groups_playoff_per_group }},
+};
+</script>
+<script src="/static/js/public-standings.js"></script>
+{% endblock %}

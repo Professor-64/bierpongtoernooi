@@ -1,0 +1,745 @@
+/* ================================================================
+   public.css — styles for all public-facing tournament pages
+   Note: CSS variables (--bp-primary etc.) are set per-tournament
+         via an inline <style> block in base_public.html
+   ================================================================ */
+
+/* ── Base / layout ───────────────────────────────────────────── */
+body {
+  background: #f4f6fb;
+  color: #1e293b;
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+}
+.public-header {
+  background: var(--bp-primary);
+  padding: .75rem 1.5rem;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.public-nav a {
+  color: rgba(255,255,255,.85);
+  text-decoration: none;
+  padding: .35rem .75rem;
+  border-radius: 6px;
+  transition: background .15s;
+  font-size: .875rem; font-weight: 500;
+}
+.public-nav a:hover,
+.public-nav a.active { background: rgba(255,255,255,.2); color: white; }
+.tournament-title { font-size: 1.25rem; font-weight: 700; color: white; }
+.main-content { padding: 1.5rem; }
+
+/* ── Header timer ────────────────────────────────────────────── */
+.header-timer {
+  color: white;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: 1rem;
+  min-width: 3.5rem; text-align: center;
+  padding: .2rem .5rem; border-radius: 6px;
+  background: rgba(255,255,255,.15);
+}
+.header-timer.danger  { background: rgba(220,53,69,.7); }
+.header-timer.inactive { opacity: .5; }
+
+/* ── Shared animations ───────────────────────────────────────── */
+@keyframes bp-pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ── Live dot (shared across public pages) ───────────────────── */
+.live-dot {
+  display: inline-block; width: 8px; height: 8px;
+  background: #e63946; border-radius: 50%;
+  animation: bp-pulse 1.2s infinite; vertical-align: middle;
+}
+
+/* ── Sound unlock button ─────────────────────────────────────── */
+.sound-unlock-btn {
+  position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 9999;
+  background: var(--bp-primary); color: white;
+  border: none; border-radius: 50px; padding: .6rem 1.2rem;
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0,0,0,.25); display: none;
+}
+.sound-unlock-btn:hover { opacity: .9; }
+
+/* ── Scoreboard ──────────────────────────────────────────────── */
+.match-row {
+  background: white; border-radius: 10px;
+  padding: 1rem 1.25rem; margin-bottom: .6rem;
+  border: 1px solid #e2e8f0; border-left: 4px solid #e2e8f0;
+  transition: border-color .3s;
+}
+.match-row.live     { border-left-color: var(--bp-primary); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+.match-row.finished { opacity: .7; }
+.score-big          { font-size: 1.8rem; font-weight: 800; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; }
+.team-name-pub      { font-size: 1rem; font-weight: 600; color: #1e293b; }
+.section-label      { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .5rem; margin-top: 1rem; }
+.live-indicator     { display: inline-block; width: 8px; height: 8px; background: var(--bp-primary); border-radius: 50%; animation: bp-pulse 1.2s infinite; }
+
+/* ── Standings table ─────────────────────────────────────────── */
+.standings-table {
+  width: 100%; border-collapse: collapse;
+  background: white; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
+.standings-table th {
+  padding: .7rem 1rem; text-align: left;
+  background: #f8fafc; color: #64748b;
+  font-size: .75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 2px solid #e2e8f0;
+}
+.standings-table th.col-rank { width: 2.5rem; }
+.standings-table td        { padding: .75rem 1rem; border-bottom: 1px solid #f1f5f9; color: #1e293b; }
+.standings-table tr:last-child td { border-bottom: none; }
+.standings-table tr:hover td { background: #f8fafc; }
+.rank-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  font-weight: 700; font-size: .82rem; background: #f1f5f9; color: #64748b;
+}
+.rank-badge.r1 { background: #fef3c7; color: #92400e; }
+.rank-badge.r2 { background: #e2e8f0; color: #475569; }
+.rank-badge.r3 { background: #fef0e0; color: #92400e; }
+.pts-col       { font-size: 1.15rem; font-weight: 800; color: var(--bp-primary, #206bc4); }
+.adv-line td   { border-top: 3px solid var(--bp-primary, #206bc4) !important; }
+
+/* ── Bracket ─────────────────────────────────────────────────── */
+/*
+  Variabelen:
+    --bl-h   fixture hoogte
+    --bl-g   ruimte tussen fixtures binnen één pair
+    --bl-pg  ruimte tussen pairs (volgende ronde)
+    --bl-cw  breedte van de connector-arm
+    --bl-fw  breedte van een fixture
+
+  Structuur per ronde-overgang:
+    [fixtureBlock colN] [bracket] [fixtureBlock colN+1]
+
+  De bracket is een div met border rechts/boven/onder (geen links).
+  Hoogte   = --bl-h + --bl-g  (van midpunt fixture 1 tot midpunt fixture 2)
+  margin-top = --bl-h / 2     (uitlijnen op midpunt eerste fixture)
+  Volgende kolom: padding-top = (--bl-h + --bl-g) / 2  (fixture centreert in pair-ruimte)
+*/
+:root {
+  --bl-h:  80px;
+  --bl-g:   8px;
+  --bl-pg: 24px;
+  --bl-cw: 16px;
+  --bl-fw: 188px;
+}
+
+.bracket-wrap { overflow-x: auto; padding-bottom: .5rem; }
+
+/* Wrapper van de volledige bracket */
+.bl-wrap { display: flex; align-items: flex-start; }
+
+/* Kolom met fixtures */
+.bl-col  { display: flex; flex-direction: column; flex-shrink: 0; }
+
+/* Kolomlabel boven een ronde */
+.bl-label {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #64748b; text-align: center;
+  margin-bottom: 6px; width: var(--bl-fw);
+}
+
+/* Pair: twee fixtures naast elkaar in dezelfde ronde */
+.bl-pair { display: flex; flex-direction: column; gap: var(--bl-g); }
+.bl-pair + .bl-pair { margin-top: var(--bl-pg); }
+
+/* Match container: twee afzonderlijke team-slots met eigen borders */
+.bl-match {
+  height: var(--bl-h); width: var(--bl-fw);
+  flex-shrink: 0; position: relative;
+  display: flex; flex-direction: column;
+}
+
+/* Horizontale arm LINKS (van linker connector-kolom) */
+.bl-match::before {
+  content: ''; position: absolute;
+  right: 100%; top: 50%; transform: translateY(-50%);
+  width: var(--bl-cw); height: 2px; background: #cbd5e1;
+}
+.bl-col-1 .bl-match::before { display: none; }
+
+/*
+  Bracket-arm RECHTS: ┤-vorm (top + right + bottom, geen left).
+  Loopt van midden-team1 (bl-h/4) t/m midden-team2 (3*bl-h/4).
+  Toont dat beide ploegen vanuit hun eigen branch samenkomen.
+  Standaard voor bl-col-1 (links) en bl-col-r (rechts in sym-layout).
+  bl-col-sym en bl-col-r-last krijgen een enkelvoudige horizontale arm.
+*/
+.bl-match::after { content: none; }
+
+.bl-col-1 .bl-match::after {
+  content: ''; position: absolute;
+  top: calc(var(--bl-h) / 4);
+  left: 100%;
+  width: var(--bl-cw);
+  height: calc(var(--bl-h) / 2);
+  border-top: 2px solid #cbd5e1;
+  border-right: 2px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+}
+.bl-col-1 .bl-match.finished::after    { border-color: #86efac; }
+.bl-col-1 .bl-match.in_progress::after { border-color: var(--bp-primary, #206bc4); }
+
+.bl-col-r .bl-match::before { display: none; }
+.bl-col-r .bl-match::after  { display: none; }
+.bl-col-r-last .bl-match::after { display: none; }
+
+/* Gespiegelde bracket-arm LINKS voor de rechter QF-kolom */
+.bl-col-r-last .bl-match::before {
+  display: block; content: ''; position: absolute;
+  top: calc(var(--bl-h) / 4);
+  right: 100%;
+  width: var(--bl-cw);
+  height: calc(var(--bl-h) / 2);
+  transform: none;
+  border-top: 2px solid #cbd5e1;
+  border-left: 2px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
+  background: transparent;
+}
+.bl-col-r-last .bl-match.finished::before    { border-color: #86efac; }
+.bl-col-r-last .bl-match.in_progress::before { border-color: var(--bp-primary, #206bc4); }
+
+/* Individuele team-slot */
+.bl-team {
+  flex: 1;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 9px; gap: .3rem;
+  font-size: .78rem; font-weight: 600; color: #1e293b;
+  background: white; overflow: hidden;
+  border: 2px solid #e2e8f0; border-bottom: none;
+}
+.bl-team:last-child { border-bottom: 2px solid #e2e8f0; }
+
+.bl-match.finished    .bl-team { border-color: #86efac; }
+.bl-match.in_progress .bl-team {
+  border-color: var(--bp-primary, #206bc4);
+  box-shadow: 0 0 0 2px rgba(var(--bp-primary-rgb), .15);
+}
+.bl-team.win  { background: #f0fdf4; color: #15803d; }
+.bl-team.lose { color: #94a3b8; }
+.bl-team.tbd  { color: #94a3b8; font-style: italic; font-weight: 400; }
+.bl-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.bl-score { font-weight: 800; color: var(--bp-primary, #206bc4); flex-shrink: 0; font-size: .8rem; }
+
+/*
+  Bracket-connector (tussen twee kolommen).
+  Elke connector-groep heeft dezelfde hoogte als het pair dat hij verbindt.
+  De bracket zelf is absoluut gepositioneerd daarbinnen.
+*/
+.bl-cc { display: flex; flex-direction: column; width: var(--bl-cw); flex-shrink: 0; }
+
+/* Label-spacer in de connector-kolom zodat fixtures uitlijnen */
+.bl-cc-lbl { height: calc(0.6rem * 1.5 + 6px); }  /* gelijke hoogte als .bl-label */
+
+.bl-conn-grp {
+  height: calc(2 * var(--bl-h) + var(--bl-g));
+  position: relative; flex-shrink: 0;
+}
+.bl-conn-grp + .bl-conn-grp { margin-top: var(--bl-pg); }
+
+/* De eigenlijke bracket-lijn: rechts/boven/onder, links open */
+.bl-conn {
+  position: absolute;
+  top: calc(var(--bl-h) / 2);
+  height: calc(var(--bl-h) + var(--bl-g));
+  width: 100%;
+  border: 2px solid #cbd5e1; border-left: 0;
+}
+
+/*
+  Volgende kolom na een connector: de fixtures worden gecentreerd
+  binnen de ruimte van het pair dat hen voedde.
+  padding-top = (fixture_h + gap) / 2
+*/
+.bl-col-next { padding-left: var(--bl-cw); }
+.bl-grp {
+  height: calc(2 * var(--bl-h) + var(--bl-g));
+  display: flex; align-items: center;
+}
+.bl-grp + .bl-grp { margin-top: var(--bl-pg); }
+
+/*
+  Super-connector: verbindt twee "grp"-fixtures (SF→Final).
+  Hoogte = grp_height + pg = (2h+g) + pg
+  margin-top = grp_height / 2 = (2h+g) / 2
+*/
+.bl-conn-grp-2 {
+  height: calc(2 * (2 * var(--bl-h) + var(--bl-g)) + var(--bl-pg));
+  position: relative; flex-shrink: 0;
+}
+.bl-conn-2 {
+  position: absolute;
+  top: calc((2 * var(--bl-h) + var(--bl-g)) / 2);
+  height: calc(2 * var(--bl-h) + var(--bl-g) + var(--bl-pg));
+  width: 100%;
+  border: 2px solid #cbd5e1; border-left: 0;
+}
+
+/* Gespiegelde bracket voor rechterkant: U opent rechts */
+.bl-conn-r {
+  position: absolute;
+  top: calc(var(--bl-h) / 2);
+  height: calc(var(--bl-h) + var(--bl-g));
+  width: 100%;
+  border: 2px solid #cbd5e1; border-right: 0;
+}
+
+/* Symmetrische middenkolom: armen aan beide kanten */
+.bl-col-sym .bl-match::after {
+  content: ''; position: absolute;
+  left: 100%; top: 50%; transform: translateY(-50%);
+  width: var(--bl-cw); height: 2px; background: #cbd5e1;
+}
+
+
+/* Super-grp: centreert Final binnen ruimte van twee grp's */
+.bl-grp-2 {
+  height: calc(2 * (2 * var(--bl-h) + var(--bl-g)) + var(--bl-pg));
+  display: flex; align-items: center;
+}
+
+/* 3e/4e label en fixture (los van de bracket, gewoon eronder) */
+.bl-third-label {
+  font-size: .6rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: #94a3b8; text-align: center;
+  margin-top: 14px; margin-bottom: 6px; width: var(--bl-fw);
+}
+/* ── Nieuw bracket (bk-*) ────────────────────────────────────── */
+
+/* Wrapper & SVG-overlay */
+.bk-wrap {
+  position: relative;
+  overflow-x: auto;
+  padding-bottom: .5rem;
+}
+
+.bk-svg {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: visible;
+}
+
+/* Grid per bracket-formaat */
+.bk-grid { display: grid; position: relative; z-index: 2; }
+
+/* QF (≥5 ploegen): 5 kolommen */
+.bk-grid-qf    { grid-template-columns: repeat(5, 1fr); min-width: 580px; }
+/* SF (3-4 ploegen): 3 kolommen */
+.bk-grid-sf    { grid-template-columns: repeat(3, 1fr); min-width: 340px; }
+/* Finale-only: 1 kolom */
+.bk-grid-final { grid-template-columns: 1fr; max-width: 280px; margin: 0 auto; }
+
+/* Ronde-kolom */
+.bk-round { display: flex; flex-direction: column; }
+
+.bk-round-label {
+  text-align: center;
+  font-size: .62rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 8px 6px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+/*
+  Vaste hoogte zodat space-around de slots uitlijnt met de volgende ronde.
+  H = 380px:
+    4 slots (QF) → centers op H/8, 3H/8, 5H/8, 7H/8
+    2 slots (SF) → centers op H/4, 3H/4   ← midpoints van QF-paren ✓
+    Finale-box   → gecentreerd op H/2      ← midpoint van SF-slots  ✓
+*/
+.bk-round-body {
+  height: 380px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 0 8px;
+}
+
+.bk-final-body { justify-content: center; }
+
+/* Team-slots (individueel, niet gegroepeerd in een box) */
+.bk-slot {
+  height: 40px;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 10px;
+  border-radius: 5px;
+  font-size: .8rem; font-weight: 600;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc; color: #475569;
+  flex-shrink: 0; overflow: hidden;
+}
+
+.bk-slot.winner { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+.bk-slot.loser  { background: #f8fafc; color: #94a3b8; border-color: #e2e8f0; }
+.bk-slot.tbd    { background: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; font-style: italic; font-weight: 400; }
+.bk-slot.live   { background: #eff6ff; color: var(--bp-primary, #1d4ed8); border-color: rgba(var(--bp-primary-rgb, 29,78,216),.3); }
+.bk-slot.pending { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+
+/* Indicator-dot */
+.bk-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: currentColor; opacity: .5; }
+.bk-slot.tbd .bk-dot { opacity: .15; }
+
+/* Live puls-animatie */
+.bk-pulse {
+  width: 6px; height: 6px; border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--bp-primary, #206bc4);
+  animation: bk-pulse 1.2s ease-in-out infinite;
+}
+@keyframes bk-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: .3; transform: scale(.65); }
+}
+
+.bk-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bk-score { font-weight: 800; font-size: .82rem; flex-shrink: 0; color: var(--bp-primary, #206bc4); }
+.bk-slot.loser .bk-score { color: #94a3b8; }
+
+/* Finale-box (speciaal, groter) */
+.bk-final-box {
+  background: white;
+  border: 2px solid #fbbf24;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 16px rgba(251,191,36,.18);
+}
+
+.bk-final-box .bk-slot {
+  border-radius: 0; border: none;
+  border-bottom: 1px solid #fef9e7;
+  height: 48px; font-size: .88rem; padding: 0 14px;
+}
+.bk-final-box .bk-slot:last-of-type { border-bottom: none; }
+
+.bk-champion {
+  background: linear-gradient(90deg, #92400e, #b45309);
+  color: #fef3c7; text-align: center;
+  font-size: .62rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 7px 10px;
+  border-top: 1px solid rgba(251,191,36,.3);
+}
+
+/* Kleine finale (geen SVG-lijnen, gecentreerd eronder) */
+.bk-third-section {
+  margin-top: -35px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+
+.bk-third-label {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .62rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: #94a3b8;
+}
+.bk-third-label::before,
+.bk-third-label::after { content: ''; display: block; width: 36px; height: 1px; background: #e2e8f0; }
+
+.bk-third-box { width: 210px; border-color: #e2e8f0; box-shadow: 0 1px 6px rgba(0,0,0,.06); }
+
+.bk-third-winner {
+  background: #f1f5f9; color: #78716c; text-align: center;
+  font-size: .62rem; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 7px 10px; border-top: 1px solid #e2e8f0;
+}
+
+/* Final ranking matches */
+.fr-match {
+  background: white; border-radius: 8px; padding: .75rem 1rem;
+  border: 2px solid #e2e8f0; margin-bottom: .5rem;
+  display: flex; align-items: center; gap: .75rem;
+}
+.fr-match.finished    { border-color: #86efac; }
+.fr-match.in_progress { border-color: var(--bp-primary, #206bc4); }
+.fr-team  { flex: 1; font-weight: 600; font-size: .9rem; }
+.fr-score { font-weight: 800; font-size: 1rem; color: var(--bp-primary, #206bc4); min-width: 3.5rem; text-align: center; }
+.fr-vs    { color: #94a3b8; font-size: .85rem; }
+
+/* ── Public tables grid ──────────────────────────────────────── */
+.tables-grid { display: grid; gap: 1.25rem; }
+
+/* Card shell */
+.t-card { border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: white; transition: border-color .2s, box-shadow .2s; cursor: pointer; }
+.t-card.live { border-color: var(--bp-primary); box-shadow: 0 3px 12px rgba(var(--bp-primary-rgb), .18); }
+
+/* Name bar — 3-column grid */
+.t-name-bar {
+  background: var(--bp-primary); color: white;
+  font-weight: 700; font-size: .8rem;
+  padding: .3rem .6rem;
+  display: grid !important; grid-template-columns: 1fr auto 1fr; align-items: center;
+}
+.t-name-bar-right { display: flex; justify-content: flex-end; align-items: center; gap: .3rem; }
+.t-phase-lbl {
+  font-size: .6rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .05em; opacity: .85; white-space: nowrap; text-align: center;
+}
+
+/* Horizontal card body */
+.t-card.h .t-body { display: flex; align-items: stretch; height: 80px; }
+.t-side-l { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #eff6ff; border-right: 3px solid #bfdbfe; padding: .55rem .5rem; }
+.t-side-r { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff7ed; border-left:  3px solid #fed7aa; padding: .55rem .5rem; }
+.t-score-mid { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .4rem .6rem; background: #f8fafc; min-width: 56px; flex-shrink: 0; }
+
+/* Vertical card body */
+.t-card.v { width: 180px; margin: 0 auto; }
+.t-card.v .t-body { display: flex; flex-direction: column; }
+.t-side-top { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #eff6ff; border-bottom: 3px solid #bfdbfe; padding: 1rem .6rem; min-height: 80px; }
+.t-side-bot { display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fff7ed; border-top: 3px solid #fed7aa; padding: 1rem .6rem; min-height: 80px; }
+.t-score-vert { display: flex; align-items: center; justify-content: center; gap: .35rem; padding: .35rem .5rem; background: #f8fafc; }
+
+/* Shared text */
+.t-team-name { font-size: .95rem; font-weight: 700; text-align: center; line-height: 1.2; word-break: break-word; color: #1e293b; }
+.t-card.v .t-team-name { font-size: 1rem; }
+.t-label    { font-size: .6rem; text-transform: uppercase; letter-spacing: .06em; color: #94a3b8; }
+.t-score-num  { font-size: 1.35rem; font-weight: 900; color: var(--bp-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+.t-card.v .t-score-num { font-size: 1.5rem; }
+.t-score-sep  { font-size: .8rem; color: #94a3b8; }
+.t-free       { display: flex; align-items: center; justify-content: center; padding: 1rem; color: #cbd5e1; font-style: italic; font-size: .8rem; }
+
+/* Finished card */
+.t-card.done            { border-color: #86efac; opacity: .88; }
+.t-card.done .t-name-bar { background: #16a34a; }
+.t-winner { color: #15803d !important; font-weight: 800 !important; }
+.t-loser  { color: #94a3b8 !important; }
+.t-done-score     { font-size: 1.6rem; font-weight: 900; color: #1e293b; font-variant-numeric: tabular-nums; line-height: 1; }
+.t-score-sep-done { font-size: .9rem; color: #94a3b8; }
+
+/* Drink badge */
+.t-drink     { margin-top: .25rem; display: flex; justify-content: center; }
+.t-drink-img { width: 22px; height: 22px; border-radius: 4px; object-fit: cover; opacity: .7; }
+.t-drink-name { font-size: .6rem; color: #94a3b8; font-style: italic; line-height: 1.2; }
+
+/* ── Final ranking table (standings page) ────────────────────── */
+.fr-rank-table { display: flex; flex-direction: column; gap: .65rem; }
+
+.fr-rank-group {
+  background: white; border-radius: 10px;
+  border: 2px solid #e2e8f0; overflow: hidden;
+}
+.fr-rank-group.in_progress { border-color: var(--bp-primary, #206bc4); }
+
+.fr-rank-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .35rem .75rem;
+  background: #f8fafc; border-bottom: 1px solid #e2e8f0;
+  font-size: .7rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .05em; color: #64748b;
+}
+.fr-rank-group.in_progress .fr-rank-header { background: #eff6ff; color: var(--bp-primary, #206bc4); }
+.fr-rank-status { font-size: .65rem; font-style: normal; font-weight: 600; }
+
+.fr-rank-row {
+  display: flex; align-items: center; gap: .75rem;
+  padding: .55rem .75rem;
+}
+.fr-rank-row + .fr-rank-row { border-top: 1px solid #f1f5f9; }
+.fr-rank-row.loser  { opacity: .7; }
+
+.fr-rank-pos {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .78rem;
+  background: #f1f5f9; color: #64748b;
+}
+.fr-rank-row.winner .fr-rank-pos { background: #fef3c7; color: #92400e; }
+.fr-rank-row.r1 .fr-rank-pos    { background: #fef3c7; color: #92400e; }
+.fr-rank-row.r2 .fr-rank-pos    { background: #e2e8f0; color: #475569; }
+.fr-rank-row.r3 .fr-rank-pos    { background: #fef0e0; color: #92400e; }
+
+.fr-rank-team { flex: 1; font-weight: 600; font-size: .92rem; }
+.fr-rank-row.winner .fr-rank-team { color: #15803d; }
+.fr-rank-row.loser  .fr-rank-team { color: #94a3b8; }
+
+.fr-rank-score {
+  font-weight: 800; font-size: .95rem;
+  color: var(--bp-primary, #206bc4); flex-shrink: 0;
+  min-width: 2rem; text-align: right;
+}
+.fr-rank-row.loser .fr-rank-score { color: #94a3b8; }
+
+/* ── Timer page ───────────────────────────────────────────────── */
+.timer-page {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: calc(100vh - 80px); text-align: center; background: #f4f6fb;
+}
+.timer-number {
+  font-size: clamp(5rem, 20vw, 16rem); font-weight: 900;
+  font-variant-numeric: tabular-nums; letter-spacing: -.02em; line-height: 1;
+  color: var(--bp-primary); transition: color .4s;
+}
+.timer-number.danger   { color: #dc2626; }
+.timer-number.finished { color: #94a3b8; }
+.timer-label  { font-size: 1.25rem; color: #64748b; margin-top: 1rem; text-transform: uppercase; letter-spacing: .2em; font-weight: 600; }
+.timer-status { font-size: .9rem; margin-top: 1.5rem; color: #94a3b8; }
+
+/* ── Shared public modal ─────────────────────────────────────── */
+.pub-modal {
+  display: none;
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,.76);
+  cursor: pointer;
+  align-items: center; justify-content: center;
+}
+.pub-modal.open { display: flex; }
+
+/* Close button — sits outside scrollable area, overlaps top-right corner */
+.pub-modal-close {
+  position: absolute; top: -14px; right: -14px;
+  background: white; border: none; border-radius: 50%;
+  width: 36px; height: 36px;
+  font-size: 1.3rem; line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.28);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Timer floating below modal */
+.pub-modal-timer {
+  text-align: right;
+  color: rgba(255,255,255,.9);
+  font-size: 1.5rem; font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  margin-top: .4rem;
+  text-shadow: 0 2px 6px rgba(0,0,0,.5);
+  letter-spacing: .03em;
+}
+
+/* ── Tables modal ────────────────────────────────────────────── */
+/* The inner wrap for the table modal (from public-tables.js) */
+.pub-modal-table {
+  position: relative;           /* anchor for close button */
+  max-width: 680px; width: 94%;
+  cursor: default;
+  background: transparent;
+  overflow: visible;            /* let close button poke outside */
+}
+
+/* ── Standings modal ─────────────────────────────────────────── */
+.stn-modal-wrap {
+  position: relative;           /* anchor for close button */
+  max-width: 92vw; width: 920px;
+  cursor: default;
+}
+.stn-modal-wrap.is-wide {
+  max-width: 98vw; width: 1500px;
+}
+.stn-modal-body {
+  background: #f4f6fb;
+  border-radius: 12px;
+  padding: 1.5rem;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+/* ── Standings section headings ──────────────────────────────── */
+.section-heading {
+  color: #1e293b;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: .5rem;
+  margin-bottom: 1rem;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem;
+}
+.section-heading-btn {
+  flex-shrink: 0;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px; cursor: pointer; color: #475569;
+  font-size: .75rem; padding: .25rem .6rem; line-height: 1.4;
+  font-weight: 500;
+  transition: background .15s, color .15s, border-color .15s;
+  display: flex; align-items: center; gap: .3rem;
+}
+.section-heading-btn:hover {
+  background: #e2e8f0; border-color: #94a3b8; color: #1e293b;
+}
+
+/* Table label inside match score block */
+.b-table-lbl {
+  display: block;
+  font-size: .6rem;
+  font-weight: 400;
+  color: #94a3b8;
+  font-style: italic;
+  margin-top: 2px;
+}
+
+/* Standings modal title */
+.standings-modal-title {
+  font-size: 1.2rem; font-weight: 700; color: #1e293b;
+  margin-bottom: 1.25rem;
+  border-bottom: 2px solid #e2e8f0; padding-bottom: .5rem;
+}
+
+/* ── Stat color helpers (W/G/V/diff) — used in standings JS ─── */
+.stat-win       { color: #16a34a; font-weight: 600; }
+.stat-draw      { color: #d97706; font-weight: 600; }
+.stat-loss      { color: #dc2626; font-weight: 600; }
+.stat-muted     { color: #64748b; }
+.stat-diff-pos  { color: #16a34a; font-weight: 600; }
+.stat-diff-neg  { color: #dc2626; font-weight: 600; }
+.stat-diff-zero { color: #64748b; font-weight: 600; }
+
+/* Group heading in standings JS */
+.grp-heading {
+  font-weight: 700; color: #1e293b;
+  border-bottom: 2px solid #e2e8f0; padding-bottom: .4rem;
+  margin-bottom: .5rem;
+}
+
+/* Final ranking grid */
+.fr-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: .75rem;
+}
+
+/* FR team name state */
+.fr-team-winner { color: #15803d; }
+.fr-team-loser  { color: #94a3b8; }
+
+/* ── Afspraken / rules page ───────────────────────────────────── */
+.rules-wrap {
+  max-width: 780px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 2.5rem 3rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,.08);
+  font-size: 1.15rem;
+  line-height: 1.75;
+  color: #1e293b;
+}
+.rules-wrap h1,
+.rules-wrap h2 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--bp-primary);
+  margin-bottom: 1rem;
+  margin-top: 0;
+}
+.rules-wrap h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #334155;
+  margin-top: 1.75rem;
+  margin-bottom: .6rem;
+  border-bottom: 2px solid #e2e8f0;
+  padding-bottom: .3rem;
+}
+.rules-wrap ul,
+.rules-wrap ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+.rules-wrap li { margin-bottom: .35rem; }
+.rules-wrap strong { color: #0f172a; }

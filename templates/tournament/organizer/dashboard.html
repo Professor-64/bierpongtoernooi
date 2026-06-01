@@ -1,0 +1,164 @@
+{% extends "base_organizer.html" %}
+
+{% block title %}Dashboard - {{ tournament.name }}{% endblock %}
+
+{% block page_header %}
+<div class="row g-2 align-items-center">
+  <div class="col">
+    <h2 class="page-title">{{ tournament.name }}</h2>
+    <div class="text-muted mt-1">
+      <span class="badge {% if tournament.status == 'setup' %}bg-secondary{% elif tournament.status == 'round_robin' %}bg-warning text-dark{% elif tournament.status == 'knockout' %}bg-danger{% else %}bg-success{% endif %} me-2">
+        {{ tournament.get_status_display }}
+      </span>
+      {{ tournament.get_format_display }}
+    </div>
+  </div>
+  <div class="col-auto ms-auto d-flex gap-2">
+    <a href="{% url 'drinks_manage' %}" class="btn btn-ghost-secondary">Dranken</a>
+    <a href="{% url 'live_scoring' tournament.slug %}" class="btn btn-primary">Live beheren</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row row-deck row-cards mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Ploegen</div>
+        <div class="h1 mb-3">{{ teams_count }}</div>
+        <a href="{% url 'teams_manage' tournament.slug %}" class="btn btn-sm btn-outline-primary">Beheren</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Tafels</div>
+        <div class="h1 mb-3">{{ tables_count }}</div>
+        <a href="{% url 'tables_manage' tournament.slug %}" class="btn btn-sm btn-outline-primary">Beheren</a>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Wedstrijden</div>
+        <div class="h1 mb-3">{{ matches_done }}<span class="text-muted fs-4">/{{ matches_total }}</span></div>
+        {% if matches_total > 0 %}
+          <div class="progress progress-sm">
+            <div class="progress-bar" style="width: {{ progress }}%"></div>
+          </div>
+          <div class="text-muted small mt-1">{{ progress }}% afgespeeld</div>
+        {% else %}
+          <a href="{% url 'schedule_view' tournament.slug %}" class="btn btn-sm btn-outline-primary">Schema aanmaken</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Live nu</div>
+        <div class="h1 mb-3">{{ matches_live.count }}</div>
+        {% if matches_live.count > 0 %}
+          <span class="badge bg-red-lt">Actief</span>
+        {% else %}
+          <span class="text-muted small">Geen actieve wedstrijden</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row row-cards">
+  <div class="col-lg-6 col-12">
+    <div class="card h-100">
+      <div class="card-header"><h3 class="card-title">Snelle acties</h3></div>
+      <div class="list-group list-group-flush">
+        <a href="{% url 'teams_manage' tournament.slug %}" class="list-group-item list-group-item-action">
+          <div class="row align-items-center">
+            <div class="col"><strong>Ploegen beheren</strong>
+              <div class="text-muted small">{{ teams_count }} ploeg{{ teams_count|pluralize:"en" }}</div>
+            </div>
+            <div class="col-auto text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
+          </div>
+        </a>
+        <a href="{% url 'schedule_view' tournament.slug %}" class="list-group-item list-group-item-action">
+          <div class="row align-items-center">
+            <div class="col"><strong>Schema</strong>
+              <div class="text-muted small">{% if matches_total > 0 %}{{ matches_total }} wedstrijden{% else %}Nog niet aangemaakt{% endif %}</div>
+            </div>
+            <div class="col-auto text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
+          </div>
+        </a>
+        <a href="{% url 'live_scoring' tournament.slug %}" class="list-group-item list-group-item-action">
+          <div class="row align-items-center">
+            <div class="col"><strong>Live toernooi paneel</strong>
+              <div class="text-muted small">Scores, timer en rondes beheren</div>
+            </div>
+            <div class="col-auto text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
+          </div>
+        </a>
+        <a href="{% url 'drinks_manage' %}" class="list-group-item list-group-item-action">
+          <div class="row align-items-center">
+            <div class="col"><strong>Dranken beheren</strong>
+              <div class="text-muted small">Platform-brede drankenlijst</div>
+            </div>
+            <div class="col-auto text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
+          </div>
+        </a>
+        <a href="{% url 'tournament_settings' tournament.slug %}" class="list-group-item list-group-item-action">
+          <div class="row align-items-center">
+            <div class="col"><strong>Instellingen &amp; Thema</strong>
+              <div class="text-muted small">Punten, timer, kleuren, logo</div>
+            </div>
+            <div class="col-auto text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><polyline points="9 6 15 12 9 18"/></svg>
+            </div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6 col-12">
+    <div class="card h-100">
+      <div class="card-header"><h3 class="card-title">Publieke weergave</h3></div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">Toon deze links op schermen tijdens het toernooi</p>
+        <div class="d-grid gap-2">
+          <a href="{% url 'public_scoreboard' tournament.slug %}" target="_blank"
+             class="btn btn-outline-secondary d-flex justify-content-between">
+            <span>Live Scorebord</span>
+            <span class="text-muted small">/p/{{ tournament.slug }}/scorebord/</span>
+          </a>
+          <a href="{% url 'public_standings' tournament.slug %}" target="_blank"
+             class="btn btn-outline-secondary d-flex justify-content-between">
+            <span>Tussenstand</span>
+            <span class="text-muted small">/p/{{ tournament.slug }}/stand/</span>
+          </a>
+          <a href="{% url 'public_tables' tournament.slug %}" target="_blank"
+             class="btn btn-outline-secondary d-flex justify-content-between">
+            <span>Tafels</span>
+            <span class="text-muted small">/p/{{ tournament.slug }}/tafels/</span>
+          </a>
+          <a href="{% url 'public_timer' tournament.slug %}" target="_blank"
+             class="btn btn-outline-secondary d-flex justify-content-between">
+            <span>Timer</span>
+            <span class="text-muted small">/p/{{ tournament.slug }}/timer/</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
