@@ -31,6 +31,39 @@ body {
 .tournament-title { font-size: 1.25rem; font-weight: 700; color: white; }
 .main-content { padding: 1.5rem; }
 
+/* ── Mobile hamburger menu ───────────────────────────────────── */
+.pub-hamburger {
+  display: none;
+  align-items: center; justify-content: center;
+  background: rgba(255,255,255,.2); border: none; border-radius: 6px;
+  padding: .35rem .45rem; color: white; cursor: pointer;
+}
+.pub-hamburger:hover { background: rgba(255,255,255,.3); }
+
+.pub-mobile-menu {
+  display: none;
+  position: absolute; top: calc(100% + .6rem); right: 0;
+  min-width: 170px;
+  background: var(--bp-primary);
+  border-radius: 8px; padding: .4rem;
+  box-shadow: 0 6px 24px rgba(0,0,0,.3);
+  z-index: 200;
+  flex-direction: column; gap: .1rem;
+}
+.pub-mobile-menu.open { display: flex; }
+.pub-mobile-menu a {
+  color: rgba(255,255,255,.9); text-decoration: none;
+  padding: .6rem .9rem; border-radius: 5px;
+  font-size: .95rem; font-weight: 500; display: block; white-space: nowrap;
+}
+.pub-mobile-menu a:hover,
+.pub-mobile-menu a.active { background: rgba(255,255,255,.2); color: white; }
+
+@media (max-width: 575px) {
+  .pub-nav-desktop { display: none !important; }
+  .pub-hamburger   { display: flex; }
+}
+
 /* ── Header timer ────────────────────────────────────────────── */
 .header-timer {
   color: white;
@@ -354,6 +387,12 @@ body {
   overflow-x: auto;
   padding-bottom: .5rem;
 }
+/* Inner scroll unit: ensures bk-third-section aligns under the finale column,
+   not the viewport center, when the bracket overflows on narrow screens */
+.bk-inner {
+  display: inline-block;
+  min-width: 100%;
+}
 
 .bk-svg {
   position: absolute;
@@ -502,7 +541,14 @@ body {
 .fr-vs    { color: #94a3b8; font-size: .85rem; }
 
 /* ── Public tables grid ──────────────────────────────────────── */
+.tables-grid-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .tables-grid { display: grid; gap: 1.25rem; }
+/* Preserve card shapes on narrow screens — allow horizontal scroll instead of squishing */
+.tables-grid .t-card.h { min-width: 220px; }
+.tables-grid .t-card.v { min-width: 180px; }
 
 /* Card shell */
 .t-card { border: 2px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: white; transition: border-color .2s, box-shadow .2s; cursor: pointer; }

@@ -345,8 +345,10 @@ function renderBracket(bracket) {
 
   return `<div class="bk-wrap" id="bk-wrap">
     <svg class="bk-svg" id="bk-svg"></svg>
-    <div class="bk-grid ${gridCls}">${cols}</div>
-    ${thirdHtml}
+    <div class="bk-inner">
+      <div class="bk-grid ${gridCls}">${cols}</div>
+      ${thirdHtml}
+    </div>
   </div>`;
 }
 

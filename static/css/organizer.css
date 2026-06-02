@@ -157,6 +157,10 @@
   gap: .6rem;
   min-height: 80px;
 }
+@media (max-width: 768px) {
+  .dg-group-body,
+  .dg-pool-zone { grid-template-columns: 1fr; }
+}
 .dg-group-body.is-empty,
 .dg-pool-zone.is-empty {
   display: flex;
