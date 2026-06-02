@@ -24,7 +24,7 @@ class TournamentGameForm(forms.ModelForm):
             'games_per_team', 'knockout_advancement', 'schedule_efficient',
             'points_win', 'points_draw', 'points_loss', 'points_bonus_all_cups',
             'playoff_enabled', 'playoff_count', 'final_ranking_enabled',
-            'groups_count', 'groups_ko_per_group', 'groups_playoff_per_group',
+            'groups_count',
         ]
 
     def __init__(self, *args, **kwargs):
@@ -41,24 +41,7 @@ class TournamentGameForm(forms.ModelForm):
         playoff_count = cleaned.get('playoff_count', 4)
         knockout_advancement = cleaned.get('knockout_advancement', 8)
 
-        if fmt == Tournament.FORMAT_GROUPS:
-            groups_count = cleaned.get('groups_count', 2) or 2
-            ko_per = cleaned.get('groups_ko_per_group', 2) or 2
-            po_per = cleaned.get('groups_playoff_per_group', 0) or 0
-            total_direct_ko = groups_count * ko_per
-            if playoff_enabled and po_per > 0:
-                po_total = groups_count * po_per
-                if po_total % 2 != 0:
-                    self.add_error('groups_playoff_per_group',
-                        'Totaal playoff-ploegen (poules × per poule) moet even zijn.')
-                total_ko = total_direct_ko + po_total // 2
-            else:
-                total_ko = total_direct_ko
-            if total_ko not in {2, 4, 8, 16}:
-                self.add_error('groups_ko_per_group',
-                    f'Totaal KO-ploegen ({total_ko}) moet 2, 4, 8 of 16 zijn.')
-
-        elif fmt == Tournament.FORMAT_COMBINED and playoff_enabled:
+        if fmt in (Tournament.FORMAT_COMBINED, Tournament.FORMAT_GROUPS) and playoff_enabled:
             if playoff_count and playoff_count % 2 != 0:
                 self.add_error('playoff_count', 'Het aantal ploegen in de play-offs moet even zijn.')
             if playoff_count and knockout_advancement:

@@ -105,6 +105,41 @@ body {
 .pts-col       { font-size: 1.15rem; font-weight: 800; color: var(--bp-primary, #206bc4); }
 .adv-line td   { border-top: 3px solid var(--bp-primary, #206bc4) !important; }
 
+/* ── Advancement row indicators ──────────────────────────────── */
+/* Subtle background tint per advancement group */
+.standings-table tr.adv-ko-team td {
+  background: rgba(var(--bp-primary-rgb, 32,107,196), 0.07);
+}
+.standings-table tr.adv-ko-team:hover td {
+  background: rgba(var(--bp-primary-rgb, 32,107,196), 0.13);
+}
+.standings-table tr.adv-po-team td {
+  background: rgba(77, 171, 247, 0.08);
+}
+.standings-table tr.adv-po-team:hover td {
+  background: rgba(77, 171, 247, 0.15);
+}
+
+/* adv-sep-ko / adv-sep-po: no border, background handles the visual grouping */
+.standings-table tr.adv-sep-ko td,
+.standings-table tr.adv-sep-po td { /* no border — background color change is the separator */ }
+
+/* Legend */
+.standings-legend { margin-top: .5rem; }
+.adv-legend {
+  display: flex; gap: 1rem; flex-wrap: wrap;
+  font-size: .75rem; color: #64748b;
+}
+.adv-legend-item {
+  display: flex; align-items: center; gap: .35rem;
+}
+.adv-legend-item::before {
+  content: ''; display: inline-block;
+  width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+}
+.adv-legend-ko::before { background: var(--bp-primary, #206bc4); }
+.adv-legend-po::before { background: #4dabf7; }
+
 /* ── Bracket ─────────────────────────────────────────────────── */
 /*
   Variabelen:

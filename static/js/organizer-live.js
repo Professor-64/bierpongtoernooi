@@ -19,12 +19,12 @@ function setBonusManual(matchId, team, checked) {
   });
 }
 
-function changeScore(matchId, field, delta, slug, maxCups) {
+function _applyScore(matchId, field, newVal, slug, maxCups) {
   const s = LIVE_CONFIG.scores;
   if (!s[matchId]) s[matchId] = { score1: 0, score2: 0 };
-  const newVal = Math.min(maxCups, Math.max(0, s[matchId][field] + delta));
   s[matchId][field] = newVal;
-  document.getElementById(field + '-' + matchId).textContent = newVal;
+  const el = document.getElementById(field + '-' + matchId);
+  if (el) { el.tagName === 'INPUT' ? (el.value = newVal) : (el.textContent = newVal); }
   const bonusTeam = field === 'score1' ? 1 : 2;
   const isMax = newVal >= maxCups;
   updateBonusDisplay(matchId, bonusTeam, isMax);
@@ -40,6 +40,23 @@ function changeScore(matchId, field, delta, slug, maxCups) {
     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
     body: JSON.stringify({ action: 'update_score', score1: s[matchId].score1, score2: s[matchId].score2 }),
   });
+}
+
+function changeScore(matchId, field, delta, slug, maxCups) {
+  const s = LIVE_CONFIG.scores;
+  if (!s[matchId]) s[matchId] = { score1: 0, score2: 0 };
+  const newVal = Math.min(maxCups, Math.max(0, s[matchId][field] + delta));
+  _applyScore(matchId, field, newVal, slug, maxCups);
+}
+
+function validateAndSetScore(input, matchId, field, slug, maxCups) {
+  let val = parseInt(input.value, 10);
+  if (isNaN(val) || val < 0) val = 0;
+  if (val > maxCups) val = maxCups;
+  // Only clamp the displayed value when the user has finished typing a number
+  // (allow empty/intermediate state while typing)
+  if (input.value !== '' && String(val) !== input.value) input.value = val;
+  _applyScore(matchId, field, val, slug, maxCups);
 }
 
 function startMatch(matchId, slug) {

@@ -149,6 +149,9 @@ def tournament_settings(request, slug):
                     Standing.objects.filter(tournament=tournament).delete()
                     tournament.status = Tournament.STATUS_SETUP
                     tournament.save()
+                    if request.POST.get('regenerate_rules') == '1':
+                        tournament.custom_rules = _generate_auto_rules(tournament)
+                        tournament.save(update_fields=['custom_rules'])
                     messages.warning(request, 'Formaat gewijzigd — het schema is verwijderd. Maak een nieuw schema aan.')
                 else:
                     messages.success(request, 'Game-instellingen opgeslagen!')
@@ -732,48 +735,71 @@ def _generate_groups_phase(tournament):
 def _get_teams_from_groups(tournament):
     """
     Returns (ko_teams, po_teams, fr_teams) for the groups format.
-    KO teams are interleaved by rank (rank-1 from each group first) to prevent
-    same-group matchups in early KO rounds.
-    """
-    groups = list(tournament.groups.all().order_by('number'))
-    ko_per = max(1, tournament.groups_ko_per_group)
-    po_per = tournament.groups_playoff_per_group if tournament.playoff_enabled else 0
 
-    # Build per-group ranked team lists
-    group_ranked = {}
-    for group in groups:
-        standings = _standings_annotate_order(Standing.objects.filter(
+    Selection process (same as UEFA-style best-runner-up):
+      1. Take all rank-1 teams, then all rank-2, etc.
+      2. When a rank produces more teams than the remaining slots, apply
+         cross-group tiebreaker: points → cup_diff → cups_scored → cups_conceded.
+
+    Uses tournament.knockout_advancement, playoff_count and final_ranking_enabled
+    (the same fields as combined format — no more per-group settings).
+    """
+    n_ko = tournament.knockout_advancement
+    n_po = tournament.playoff_count if tournament.playoff_enabled else 0
+
+    # Build per-group standing lists (already ordered by rank within group)
+    group_standings = {}
+    for group in tournament.groups.all().order_by('number'):
+        qs = _standings_annotate_order(Standing.objects.filter(
             tournament=tournament, phase='group', group=group,
         ).select_related('team'))
-        ranked = [s.team for s in standings]
-        if not ranked:
-            ranked = list(group.teams.all())
-        group_ranked[group.id] = ranked
+        sl = list(qs)
+        if not sl:
+            # Fallback: no standings yet → use team order
+            sl = [type('S', (), {'team': t, 'points': 0, 'cup_diff': 0,
+                                  'cups_scored': 0, 'cups_conceded': 0})()
+                  for t in group.teams.all()]
+        group_standings[group.id] = sl
 
-    # KO: interleave rank-1 from each group, then rank-2, etc.
-    ko_teams = []
-    for rank in range(ko_per):
-        for group in groups:
-            ranked = group_ranked.get(group.id, [])
-            if rank < len(ranked):
-                ko_teams.append(ranked[rank])
+    if not group_standings:
+        return [], [], []
 
-    # PO: next ranks interleaved
-    po_teams = []
-    if po_per > 0:
-        for rank in range(ko_per, ko_per + po_per):
-            for group in groups:
-                ranked = group_ranked.get(group.id, [])
-                if rank < len(ranked):
-                    po_teams.append(ranked[rank])
+    max_rank = max(len(v) for v in group_standings.values())
 
-    # FR: remaining teams
+    def pick_best(n_slots, exclude_ids):
+        """Fill n_slots by rank; apply cross-group tiebreaker when a rank has too many teams."""
+        result = []
+        for rank in range(max_rank):
+            if len(result) >= n_slots:
+                break
+            rank_standings = [
+                sl[rank]
+                for sl in group_standings.values()
+                if rank < len(sl) and sl[rank].team.id not in exclude_ids
+            ]
+            still_need = n_slots - len(result)
+            if len(rank_standings) <= still_need:
+                result.extend(rank_standings)
+            else:
+                # Cross-group tiebreaker
+                rank_standings.sort(key=lambda s: (
+                    -s.points,
+                    -(s.cups_scored - s.cups_conceded),
+                    -s.cups_scored,
+                    s.cups_conceded,
+                ))
+                result.extend(rank_standings[:still_need])
+        return [s.team for s in result]
+
+    ko_teams = pick_best(n_ko, set())
+    ko_ids   = {t.id for t in ko_teams}
+    po_teams = pick_best(n_po, ko_ids) if n_po else []
+
     fr_teams = []
     if tournament.final_ranking_enabled:
-        start_fr = ko_per + po_per
-        for group in groups:
-            ranked = group_ranked.get(group.id, [])
-            fr_teams.extend(ranked[start_fr:])
+        excl  = ko_ids | {t.id for t in po_teams}
+        total = sum(len(v) for v in group_standings.values())
+        fr_teams = pick_best(total - len(ko_teams) - len(po_teams), excl)
 
     return ko_teams, po_teams, fr_teams
 
@@ -785,15 +811,11 @@ def _advance_groups_to_knockout(tournament, custom_ranked_teams=None):
     tables_count = len(tables) if tables else 1
 
     if custom_ranked_teams is not None:
-        # Split flat custom order into KO / PO / FR buckets
-        ko_per = max(1, tournament.groups_ko_per_group)
-        po_per = tournament.groups_playoff_per_group if tournament.playoff_enabled else 0
-        n_groups = tournament.groups.count()
-        ko_count = ko_per * n_groups
-        po_count = po_per * n_groups
-        ko_teams = custom_ranked_teams[:ko_count]
-        po_teams = custom_ranked_teams[ko_count:ko_count + po_count] if po_count else []
-        fr_teams = custom_ranked_teams[ko_count + po_count:] if tournament.final_ranking_enabled else []
+        n_ko = tournament.knockout_advancement
+        n_po = tournament.playoff_count if tournament.playoff_enabled else 0
+        ko_teams = custom_ranked_teams[:n_ko]
+        po_teams = custom_ranked_teams[n_ko:n_ko + n_po] if n_po else []
+        fr_teams = custom_ranked_teams[n_ko + n_po:] if tournament.final_ranking_enabled else []
     else:
         ko_teams, po_teams, fr_teams = _get_teams_from_groups(tournament)
 
@@ -978,46 +1000,84 @@ def _auto_create_display_groups(tournament):
     tables = list(tournament.tables.all())
     tables_count = len(tables) if tables else 1
 
-    # Collect matches per phase in the correct order:
-    # PO: ascending bracket_slot (order of play)
-    # FR: DESCENDING bracket_slot (lowest positions first, e.g. 15/16 before 1/2)
-    # KO: QF → SF → 3rd → Final, ascending bracket_slot within phase
-    po_matches = list(tournament.matches.filter(
+    def _chunks(matches, label):
+        """Split matches into groups of tables_count with a descriptive name."""
+        if not matches:
+            return []
+        batches = [matches[i:i + tables_count] for i in range(0, len(matches), tables_count)]
+        if len(batches) == 1:
+            return [(label, batches[0])]
+        return [(f'{label} {i + 1}', b) for i, b in enumerate(batches)]
+
+    # PO: ascending bracket_slot
+    po = list(tournament.matches.filter(
         phase=Match.PHASE_PLAYOFF
     ).order_by('bracket_slot', 'id'))
 
-    fr_matches = list(tournament.matches.filter(
+    # FR: descending bracket_slot (lowest positions first)
+    fr = list(tournament.matches.filter(
         phase=Match.PHASE_FINAL_RANKING
-    ).order_by('-bracket_slot', 'id'))   # reversed: lowest places first
+    ).order_by('-bracket_slot', 'id'))
 
-    ko_phase_order = [
-        Match.PHASE_QUARTERFINAL, Match.PHASE_SEMIFINAL,
-        Match.PHASE_THIRD_PLACE,  Match.PHASE_FINAL,
-    ]
-    ko_matches = []
-    for ph in ko_phase_order:
-        ko_matches.extend(list(tournament.matches.filter(phase=ph).order_by('bracket_slot', 'id')))
+    # QF: split ready (known teams) vs TBD (waiting for PO winners)
+    qf_all = list(tournament.matches.filter(
+        phase=Match.PHASE_QUARTERFINAL
+    ).order_by('bracket_slot', 'id'))
+    qf_ready = [m for m in qf_all if m.team1 and m.team2]
+    qf_tbd   = [m for m in qf_all if not (m.team1 and m.team2)]
 
-    all_matches = po_matches + fr_matches + ko_matches
+    sf = list(tournament.matches.filter(
+        phase=Match.PHASE_SEMIFINAL
+    ).order_by('bracket_slot', 'id'))
 
-    if not all_matches:
+    # 3rd place + Final together (played simultaneously)
+    finale = (
+        list(tournament.matches.filter(phase=Match.PHASE_THIRD_PLACE).order_by('bracket_slot', 'id')) +
+        list(tournament.matches.filter(phase=Match.PHASE_FINAL).order_by('bracket_slot', 'id'))
+    )
+
+    # PO + FR are always mixed together.
+    # When schedule_efficient is on, also mix ready KO (QF with known teams) into those groups.
+    mix_parts = []
+    if po:  mix_parts.append('PO')
+    if fr:  mix_parts.append('FR')
+    if tournament.schedule_efficient and qf_ready:
+        mix_parts.append('KO')
+    mix_label = ' / '.join(mix_parts) if mix_parts else 'Ronde'
+
+    if tournament.schedule_efficient:
+        # Efficient ON: PO + FR + ready QF mixed; TBD QF separate (after PO)
+        mix_matches    = po + fr + qf_ready
+        qf_main        = []
+        qf_after_po    = qf_tbd
+    else:
+        # Efficient OFF: PO + FR mixed; all QFs (ready + TBD) together in one group
+        mix_matches    = po + fr
+        qf_main        = qf_ready + qf_tbd
+        qf_after_po    = []
+
+    named_chunks = (
+        _chunks(mix_matches, mix_label) +
+        _chunks(qf_main,     'Kwartfinale') +
+        _chunks(qf_after_po, 'Kwartfinale (na play-offs)') +
+        _chunks(sf,          'Halve finale') +
+        _chunks(finale,      'Finale')
+    )
+
+    if not named_chunks:
         return
 
-    # Split into chunks of tables_count
-    chunks = [all_matches[i:i + tables_count] for i in range(0, len(all_matches), tables_count)]
-
     to_update = []
-    for idx, chunk in enumerate(chunks):
+    for idx, (name, chunk) in enumerate(named_chunks):
         group = DisplayGroup.objects.create(
             tournament=tournament,
-            name=f'Ronde {idx + 1}',
+            name=name,
             order=idx,
             is_active=(idx == 0),
         )
         for match_order, match in enumerate(chunk):
             match.display_group = group
             match.display_group_order = match_order
-            # Assign table if available
             if match_order < len(tables):
                 match.table = tables[match_order]
             to_update.append(match)
@@ -1403,6 +1463,10 @@ def live_scoring(request, slug):
             m.phase_label_text = _match_phase_label(m, tournament)
 
         # Also label the main matches list (score-editing section)
+        for m in matches:
+            m.phase_label_text = _match_phase_label(m, tournament)
+    else:
+        # Normal rounds: label every match so the group name shows in the card header
         for m in matches:
             m.phase_label_text = _match_phase_label(m, tournament)
 
@@ -1882,9 +1946,10 @@ def _generate_auto_rules(tournament):
         p.append(f'<li><strong>Wedstrijden per ploeg:</strong> {t.games_per_team}</li>')
     if t.format == Tournament.FORMAT_GROUPS:
         p.append(f'<li><strong>Aantal poules:</strong> {t.groups_count}</li>')
-        p.append(f'<li><strong>Teams naar KO per poule:</strong> {t.groups_ko_per_group}</li>')
-        if t.playoff_enabled and t.groups_playoff_per_group:
-            p.append(f'<li><strong>Teams naar play-offs per poule:</strong> {t.groups_playoff_per_group}</li>')
+        p.append(f'<li><strong>Teams naar knock-out (totaal):</strong> {t.knockout_advancement}</li>')
+        if t.playoff_enabled and t.playoff_count:
+            p.append(f'<li><strong>Teams naar play-offs (totaal):</strong> {t.playoff_count}</li>')
+        p.append('<li>Doorstoot via rangschikking over alle poules (beste eersten, dan beste tweedes, ...)</li>')
     if t.format == Tournament.FORMAT_COMBINED:
         p.append(f'<li><strong>Doorstoot naar knock-out:</strong> top {t.knockout_advancement}</li>')
         if t.playoff_enabled:
@@ -1940,8 +2005,6 @@ def ranking_preview(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug, organizer=request.user)
 
     if tournament.format == Tournament.FORMAT_GROUPS:
-        ko_per = max(1, tournament.groups_ko_per_group)
-        po_per = tournament.groups_playoff_per_group if tournament.playoff_enabled else 0
         ko_teams, po_teams, fr_teams = _get_teams_from_groups(tournament)
     else:
         all_ranked = _get_ranked_teams(tournament)
@@ -2050,9 +2113,15 @@ def api_scores(request, slug):
 def api_standings(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
 
-    # Groups format: return per-group standings
+    # Groups format: return per-group standings with exact advancement per team
     groups_data = []
     if tournament.format == Tournament.FORMAT_GROUPS:
+        # Compute the real KO/PO/FR sets using cross-group tiebreaker logic
+        ko_teams, po_teams, fr_teams = _get_teams_from_groups(tournament)
+        ko_ids = {t.id for t in ko_teams}
+        po_ids = {t.id for t in po_teams}
+        fr_ids = {t.id for t in fr_teams}
+
         for group in tournament.groups.all().order_by('number'):
             grp_standings = _standings_annotate_order(Standing.objects.filter(
                 tournament=tournament, phase='group', group=group,
@@ -2060,8 +2129,8 @@ def api_standings(request, slug):
             groups_data.append({
                 'name': group.name,
                 'number': group.number,
-                'ko_count': tournament.groups_ko_per_group,
-                'playoff_count': tournament.groups_playoff_per_group,
+                'ko_count': 0,       # no longer used for coloring; kept for compat
+                'playoff_count': 0,
                 'standings': [{
                     'rank': i + 1,
                     'team': s.team.name,
@@ -2073,6 +2142,10 @@ def api_standings(request, slug):
                     'cups_scored': s.cups_scored,
                     'cups_conceded': s.cups_conceded,
                     'cup_diff': s.cups_scored - s.cups_conceded,
+                    'advancement': ('ko' if s.team.id in ko_ids
+                                    else 'po' if s.team.id in po_ids
+                                    else 'fr' if s.team.id in fr_ids
+                                    else None),
                 } for i, s in enumerate(grp_standings)],
             })
 
@@ -2080,6 +2153,8 @@ def api_standings(request, slug):
         tournament=tournament, phase='round_robin'
     ).select_related('team'))
 
+    n_ko = tournament.knockout_advancement if tournament.format == Tournament.FORMAT_COMBINED else 0
+    n_po = (tournament.playoff_count if tournament.playoff_enabled else 0) if tournament.format == Tournament.FORMAT_COMBINED else 0
     standings_data = [{
         'rank': i + 1,
         'team': s.team.name,
@@ -2091,6 +2166,9 @@ def api_standings(request, slug):
         'cups_scored': s.cups_scored,
         'cups_conceded': s.cups_conceded,
         'cup_diff': s.cups_scored - s.cups_conceded,
+        'advancement': ('ko' if n_ko and (i + 1) <= n_ko
+                        else 'po' if n_po and (i + 1) <= n_ko + n_po
+                        else None),
     } for i, s in enumerate(standings)]
 
     # Knockout bracket data (excludes playoff and final_ranking)
@@ -2144,7 +2222,7 @@ def api_standings(request, slug):
     if tournament.format == Tournament.FORMAT_ROUND_ROBIN:
         base_ko = 0
     elif tournament.format == Tournament.FORMAT_GROUPS:
-        base_ko = tournament.groups_count * tournament.groups_ko_per_group
+        base_ko = tournament.knockout_advancement
     else:  # combined, knockout
         base_ko = tournament.knockout_advancement
 

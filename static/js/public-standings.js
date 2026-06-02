@@ -1,15 +1,33 @@
 /* public-standings.js — standings, bracket and groups rendering
-   Requires PUBLIC_CONFIG = { slug, format, advLine, koPerGroup, poPerGroup } */
+   Requires PUBLIC_CONFIG = { slug, format, advLine, poCount, playoffEnabled, groupsCount, refreshSeconds } */
 
-function standingsTableRows(data, advAfter) {
+/**
+ * Build tbody rows.
+ * Uses s.advancement ('ko'|'po'|'fr'|null) when available (groups format with cross-group tiebreaker).
+ * Falls back to koLine/poLine positional logic for combined format or when field is absent.
+ */
+function standingsTableRows(data, koLine, poLine) {
+  koLine = koLine || 0;
+  poLine = (poLine && poLine > koLine) ? poLine : 0;
   const medals = ['r1', 'r2', 'r3'];
   const rows = data.map((s, i) => {
     const rank = i + 1;
-    const adv  = (advAfter && rank === advAfter) ? 'adv-line' : '';
     const diff    = (s.cup_diff !== undefined) ? s.cup_diff : (s.cups_scored - s.cups_conceded);
     const diffCls = diff > 0 ? 'stat-diff-pos' : diff < 0 ? 'stat-diff-neg' : 'stat-diff-zero';
     const diffStr = diff > 0 ? `+${diff}` : String(diff);
-    return `<tr class="${adv}">
+
+    let cls = '';
+    if (s.advancement !== undefined) {
+      // Exact API-computed advancement (accounts for cross-group tiebreakers)
+      if (s.advancement === 'ko')      cls += ' adv-ko-team';
+      else if (s.advancement === 'po') cls += ' adv-po-team';
+    } else {
+      // Positional fallback
+      if (koLine && rank <= koLine)          cls += ' adv-ko-team';
+      else if (poLine && rank <= poLine)     cls += ' adv-po-team';
+    }
+
+    return `<tr class="${cls.trim()}">
       <td><span class="rank-badge ${medals[i] || ''}">${rank}</span></td>
       <td><strong>${s.team}</strong></td>
       <td class="text-center">${s.played}</td>
@@ -25,9 +43,34 @@ function standingsTableRows(data, advAfter) {
   return rows || '<tr><td colspan="10" class="text-center text-muted py-4">Nog geen resultaten</td></tr>';
 }
 
+function _advancementLines(advLine, poCount, playoffEnabled) {
+  const koLine = advLine || 0;
+  const poLine = (playoffEnabled && poCount) ? koLine + poCount : 0;
+  return { koLine, poLine };
+}
+
+function _renderLegend(el, koLine, poLine) {
+  if (!el) return;
+  if (!koLine && !poLine) { el.innerHTML = ''; return; }
+  let html = '<div class="adv-legend">';
+  if (koLine) html += `<span class="adv-legend-item adv-legend-ko">Knock-out</span>`;
+  if (poLine) html += `<span class="adv-legend-item adv-legend-po">Play-offs</span>`;
+  html += '</div>';
+  el.innerHTML = html;
+}
+
 function renderStandings(data) {
-  const adv = PUBLIC_CONFIG.format === 'combined' ? PUBLIC_CONFIG.advLine : 0;
-  document.getElementById('standings-body').innerHTML = standingsTableRows(data, adv);
+  const fmt = PUBLIC_CONFIG.format;
+  let koLine = 0, poLine = 0;
+  if (fmt === 'combined') {
+    ({ koLine, poLine } = _advancementLines(
+      PUBLIC_CONFIG.advLine,
+      PUBLIC_CONFIG.poCount,
+      PUBLIC_CONFIG.playoffEnabled
+    ));
+  }
+  document.getElementById('standings-body').innerHTML = standingsTableRows(data, koLine, poLine);
+  _renderLegend(document.getElementById('standings-legend'), koLine, poLine);
 }
 
 function renderGroupsStandings(groups) {
@@ -40,9 +83,16 @@ function renderGroupsStandings(groups) {
     <th class="text-center">Pts</th>
   </tr></thead>`;
   let html = '';
+  let shownLegend = false;
   groups.forEach(g => {
+    const koLine = g.ko_count  || 0;
+    const poLine = (koLine + (g.playoff_count || 0)) || 0;
+    const legendHtml = (!shownLegend && (koLine || poLine))
+      ? (() => { shownLegend = true; let l = '<div class="adv-legend mb-2">'; if (koLine) l += '<span class="adv-legend-item adv-legend-ko">Knock-out</span>'; if (poLine && poLine > koLine) l += '<span class="adv-legend-item adv-legend-po">Play-offs</span>'; return l + '</div>'; })()
+      : '';
+    html += legendHtml;
     html += `<h4 class="grp-heading mb-2 fw-bold">${g.name}</h4>`;
-    html += `<table class="standings-table mb-4">${thead}<tbody>${standingsTableRows(g.standings, g.ko_count)}</tbody></table>`;
+    html += `<table class="standings-table mb-4">${thead}<tbody>${standingsTableRows(g.standings, koLine, poLine)}</tbody></table>`;
   });
   const el = document.getElementById('groups-section');
   el.innerHTML = html || '';
@@ -498,20 +548,39 @@ function standingsOpenModal(key, groupName) {
   const content = document.getElementById('standings-modal-content');
   if (!modal || !content) return;
 
-  /* Wide variant for knockout bracket */
-  wrap.classList.toggle('is-wide', key === 'bracket');
+  /* Wide variant for all section types except plain standings */
+  wrap.classList.toggle('is-wide', ['bracket', 'groups', 'playoff', 'final_ranking'].includes(key));
 
   let title = SECTION_TITLES[key] || groupName || key;
   if (key === 'standings') title = document.getElementById('standings-title')?.textContent || 'Stand';
 
   let inner = '';
-  if      (key === 'bracket')       inner = document.getElementById('bracket-render')?.innerHTML || '';
-  else if (key === 'playoff')       inner = document.getElementById('playoff-render')?.innerHTML || '';
-  else if (key === 'final_ranking') inner = document.getElementById('final-ranking-render')?.innerHTML || '';
-  else if (key === 'standings') {
+  if (key === 'bracket') {
+    inner = document.getElementById('bracket-render')?.innerHTML || '';
+  } else if (key === 'playoff') {
+    inner = document.getElementById('playoff-render')?.innerHTML || '';
+  } else if (key === 'final_ranking') {
+    inner = document.getElementById('final-ranking-render')?.innerHTML || '';
+  } else if (key === 'standings') {
     const tbl = document.querySelector('#standings-section .standings-table');
     inner = tbl ? tbl.outerHTML : '';
-  } else if (key === 'groups')      inner = document.getElementById('groups-section')?.innerHTML || '';
+  } else if (key === 'groups') {
+    // Show only the specific group that was clicked
+    // Use data-grp-name to avoid matching button text inside the h4
+    const section = document.getElementById('groups-section');
+    if (section && groupName) {
+      const h4s = section.querySelectorAll('h4[data-grp-name]');
+      for (const h4 of h4s) {
+        if (h4.dataset.grpName === groupName) {
+          let el = h4.nextElementSibling;
+          while (el && !el.classList.contains('standings-table')) el = el.nextElementSibling;
+          if (el) inner = el.outerHTML;
+          break;
+        }
+      }
+    }
+    if (!inner) inner = section?.innerHTML || '';  // fallback: all groups
+  }
 
   content.innerHTML = `<div class="standings-modal-title">${title}</div>${inner}`;
   modal.classList.add('open');
@@ -535,9 +604,11 @@ function standingsCloseModal(evt) {
 function _addGroupModalBtns() {
   const section = document.getElementById('groups-section');
   if (!section) return;
-  section.querySelectorAll('h4').forEach(h4 => {
+  section.querySelectorAll('h4.grp-heading').forEach(h4 => {
     if (h4.querySelector('.section-heading-btn')) return;
+    // Store the clean group name as a data-attribute before adding button text
     const name = h4.textContent.trim();
+    h4.dataset.grpName = name;
     h4.classList.add('section-heading');
     const btn = document.createElement('button');
     btn.className = 'section-heading-btn';

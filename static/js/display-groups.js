@@ -39,6 +39,7 @@ const DG = {
     });
 
     this._initSortables();
+    this._initGroupSortable();
     /* Check on load */
     setTimeout(() => this._checkDuplicates(), 100);
   },
@@ -51,6 +52,25 @@ const DG = {
     const pool = document.getElementById('dg-pool-zone');
     if (pool) this._makeSortable(pool);
     document.querySelectorAll('.dg-group-body').forEach(el => this._makeSortable(el));
+  },
+
+  _initGroupSortable() {
+    const container = document.getElementById('dg-groups-container');
+    if (!container) return;
+    Sortable.create(container, {
+      animation: 150,
+      handle: '.dg-group-header',
+      draggable: '.dg-group-card',
+      ghostClass: 'sortable-ghost',
+      filter: 'button',
+      preventOnFilter: true,
+      onEnd: () => {
+        const order = Array.from(
+          container.querySelectorAll('.dg-group-card[data-group-id]')
+        ).map(el => parseInt(el.dataset.groupId, 10));
+        DG._post(`/t/${DG.slug}/display-groep/volgorde/`, { group_ids: order });
+      },
+    });
   },
 
   _makeSortable(el) {

@@ -75,7 +75,7 @@
             </div>
 
             <!-- Pouleronde — enkel voor groups formaat -->
-            <div id="section-groups-header" class="card-body border-bottom" style="display:none">
+            <div id="section-groups-header" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Pouleronde</h4>
               <div class="row g-3">
                 <div class="col-md-4">
@@ -83,27 +83,16 @@
                   {% render_field game_form.groups_count class="form-control" type="number" min="2" %}
                   <div class="form-hint">Teams worden willekeurig verdeeld.</div>
                 </div>
-                <div class="col-md-4">
-                  <label class="form-label">Teams naar KO per poule</label>
-                  {% render_field game_form.groups_ko_per_group class="form-control" type="number" min="1" %}
-                  <div class="form-hint">Totaal KO = poules × teams (moet 2, 4, 8 of 16 zijn).</div>
-                </div>
-                <div class="col-md-4">
-                  <label class="form-label">Teams naar play-offs per poule</label>
-                  {% render_field game_form.groups_playoff_per_group class="form-control" type="number" min="0" %}
-                  <div class="form-hint">0 = geen play-offs.</div>
-                </div>
               </div>
-              {% if game_form.errors.groups_ko_per_group %}
-                <div class="text-danger small mt-2">{{ game_form.errors.groups_ko_per_group|join:", " }}</div>
-              {% endif %}
-              {% if game_form.errors.groups_playoff_per_group %}
-                <div class="text-danger small mt-2">{{ game_form.errors.groups_playoff_per_group|join:", " }}</div>
-              {% endif %}
+              <div class="alert alert-info py-2 small mt-3 mb-0">
+                Gebruik onderstaande instellingen <strong>Knock-out &amp; Play-offs</strong>
+                om het totaal aantal teams voor KO/PO/FR in te stellen.
+                Doorstoot gaat via de beste eersten, dan de beste tweedes (gelijkstand = klassement over alle poules).
+              </div>
             </div>
 
             <!-- Competitiefase — enkel voor round_robin en combined -->
-            <div id="section-competitie-header" class="card-body border-bottom" style="display:none">
+            <div id="section-competitie-header" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Competitiefase</h4>
               <div class="row g-3">
                 <div class="col-md-6">
@@ -120,15 +109,27 @@
                     {% endif %}
                   {% endwith %}
                 </div>
-                <div class="col-md-6" id="row-knockout-advancement" style="display:none">
+              </div>
+            </div>
+
+            <!-- Ploegen naar knock-out — zichtbaar voor combined én groups -->
+            <div id="section-knockout-advancement" class="card-body border-bottom" hidden>
+              <div class="row g-3">
+                <div class="col-md-4">
                   <label class="form-label">Ploegen naar knock-out</label>
                   {% render_field game_form.knockout_advancement class="form-control" type="number" min="2" %}
+                  <div class="form-hint" id="hint-knockout-combined" hidden>
+                    Top N gaat naar KO na de competitiefase.
+                  </div>
+                  <div class="form-hint" id="hint-knockout-groups" hidden>
+                    Totaal KO-ploegen over alle poules. Doorstoot via beste eersten, daarna beste tweedes, …
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- Schema & Puntentelling — voor alle formats behalve knockout -->
-            <div id="section-schema-punten" class="card-body border-bottom" style="display:none">
+            <div id="section-schema-punten" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Schema &amp; Puntentelling</h4>
               <div class="mb-3">
                 <label class="form-check form-switch">
@@ -158,7 +159,7 @@
             </div>
 
             <!-- Play-offs & Finale ranking -->
-            <div id="section-playoffs-header" class="card-body border-bottom" style="display:none">
+            <div id="section-playoffs-header" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Play-offs &amp; Finale ranking</h4>
               <div id="row-playoffs-toggle" class="mb-3">
                 <label class="form-check form-switch">
@@ -409,7 +410,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="/static/js/organizer-settings.js"></script>
+<script src="/static/js/organizer-settings.js?v=2"></script>
 <!-- Quill WYSIWYG for Afspraken tab -->
 <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>

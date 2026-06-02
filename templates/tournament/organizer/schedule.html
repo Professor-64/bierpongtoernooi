@@ -19,8 +19,8 @@
     <form method="post" onsubmit="return confirm('{{ post_competition_label }} genereren op basis van de huidige stand?')">
       {% csrf_token %}
       <input type="hidden" name="action" value="advance_knockout">
-      <button type="submit" class="btn btn-warning">Naar {{ post_competition_label }} →</button>
-    </form>
+<!--       <button type="submit" class="btn btn-warning">Naar {{ post_competition_label }} →</button>
+ -->    </form>
     {% endif %}
 
     {% if tournament.format == 'knockout' %}

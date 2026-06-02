@@ -56,11 +56,15 @@
             {% if match.status != 'finished' %}
             <button class="btn btn-sm btn-outline-secondary score-btn d-block mb-1"
                     onclick="changeScore({{ match.id }},'score1',1,'{{ tournament.slug }}',{{ tournament.cup_count }})">+</button>
-            {% endif %}
-            <div class="score-display" id="score1-{{ match.id }}">{{ match.score1 }}</div>
-            {% if match.status != 'finished' %}
+            <input class="score-input" type="number" inputmode="numeric"
+                   id="score1-{{ match.id }}"
+                   value="{{ match.score1 }}" min="0" max="{{ tournament.cup_count }}"
+                   oninput="validateAndSetScore(this,{{ match.id }},'score1','{{ tournament.slug }}',{{ tournament.cup_count }})"
+                   onwheel="this.blur()">
             <button class="btn btn-sm btn-outline-secondary score-btn d-block mt-1"
                     onclick="changeScore({{ match.id }},'score1',-1,'{{ tournament.slug }}',{{ tournament.cup_count }})">-</button>
+            {% else %}
+            <div class="score-display" id="score1-{{ match.id }}">{{ match.score1 }}</div>
             {% endif %}
           </div>
           <div class="text-muted fs-5">–</div>
@@ -68,11 +72,15 @@
             {% if match.status != 'finished' %}
             <button class="btn btn-sm btn-outline-secondary score-btn d-block mb-1"
                     onclick="changeScore({{ match.id }},'score2',1,'{{ tournament.slug }}',{{ tournament.cup_count }})">+</button>
-            {% endif %}
-            <div class="score-display" id="score2-{{ match.id }}">{{ match.score2 }}</div>
-            {% if match.status != 'finished' %}
+            <input class="score-input" type="number" inputmode="numeric"
+                   id="score2-{{ match.id }}"
+                   value="{{ match.score2 }}" min="0" max="{{ tournament.cup_count }}"
+                   oninput="validateAndSetScore(this,{{ match.id }},'score2','{{ tournament.slug }}',{{ tournament.cup_count }})"
+                   onwheel="this.blur()">
             <button class="btn btn-sm btn-outline-secondary score-btn d-block mt-1"
                     onclick="changeScore({{ match.id }},'score2',-1,'{{ tournament.slug }}',{{ tournament.cup_count }})">-</button>
+            {% else %}
+            <div class="score-display" id="score2-{{ match.id }}">{{ match.score2 }}</div>
             {% endif %}
           </div>
         </div>

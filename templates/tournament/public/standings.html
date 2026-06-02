@@ -69,6 +69,7 @@
       <tr><td colspan="10" class="text-center text-muted py-4">Laden...</td></tr>
     </tbody>
   </table>
+  <div id="standings-legend" class="standings-legend"></div>
 </div>
 
 <!-- Standings modal -->
@@ -86,8 +87,9 @@
 Object.assign(PUBLIC_CONFIG, {
   format: '{{ tournament.format }}',
   advLine: {{ tournament.knockout_advancement }},
-  koPerGroup: {{ tournament.groups_ko_per_group }},
-  poPerGroup: {{ tournament.groups_playoff_per_group }},
+  poCount: {{ tournament.playoff_count }},
+  playoffEnabled: {{ tournament.playoff_enabled|yesno:"true,false" }},
+  groupsCount: {{ tournament.groups_count }},
 });
 </script>
 <script src="/static/js/public-standings.js"></script>

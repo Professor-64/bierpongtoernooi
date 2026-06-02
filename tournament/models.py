@@ -106,8 +106,6 @@ class Tournament(models.Model):
 
     # Groups format settings
     groups_count = models.PositiveIntegerField(default=2, verbose_name='Aantal poules')
-    groups_ko_per_group = models.PositiveIntegerField(default=2, verbose_name='Teams naar KO per poule')
-    groups_playoff_per_group = models.PositiveIntegerField(default=0, verbose_name='Teams naar play-offs per poule')
 
     custom_rules = models.TextField(blank=True, default='', verbose_name='Aanvullende afspraken (aanpasbaar)')
 
