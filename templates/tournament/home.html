@@ -12,8 +12,7 @@
         </div>
         <div class="col-auto ms-auto d-print-none">
           {% if user.is_authenticated %}
-            <!-- Desktop knoppen (verborgen op xs) -->
-            <div class="d-none d-sm-inline-flex align-items-center gap-2">
+            <div class="d-inline-flex align-items-center gap-2">
               <a href="{% url 'tournament_create' %}" class="btn btn-primary">
                 <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
                      stroke-width="2" stroke="currentColor" fill="none">
@@ -21,40 +20,10 @@
                   <line x1="12" y1="5" x2="12" y2="19"/>
                   <line x1="5" y1="12" x2="19" y2="12"/>
                 </svg>
-                Nieuw toernooi
+                <span class="d-none d-sm-inline">Nieuw toernooi</span>
               </a>
               <a href="{% url 'drinks_manage' %}" class="btn btn-ghost-secondary">Dranken</a>
-              <form method="post" action="{% url 'logout' %}" class="d-inline">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-ghost-secondary">Uitloggen</button>
-              </form>
-            </div>
-            <!-- Mobiele hamburger dropdown -->
-            <div class="d-sm-none">
-              <div class="dropdown">
-                <button class="btn btn-ghost-secondary p-2" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Menu">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                       stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
-                  </svg>
-                </button>
-                <div class="dropdown-menu dropdown-menu-end">
-                  <a href="{% url 'tournament_create' %}" class="dropdown-item">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24"
-                         stroke-width="2" stroke="currentColor" fill="none">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                    </svg>
-                    Nieuw toernooi
-                  </a>
-                  <a href="{% url 'drinks_manage' %}" class="dropdown-item">Dranken</a>
-                  <div class="dropdown-divider"></div>
-                  <form method="post" action="{% url 'logout' %}" style="margin:0">
-                    {% csrf_token %}
-                    <button type="submit" class="dropdown-item text-danger w-100 text-start border-0 bg-transparent">Uitloggen</button>
-                  </form>
-                </div>
-              </div>
+              {% include "tournament/_user_menu.html" %}
             </div>
           {% else %}
             <a href="{% url 'login' %}" class="btn btn-primary">Inloggen</a>

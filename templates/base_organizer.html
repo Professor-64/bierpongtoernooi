@@ -111,31 +111,77 @@
         </ul>
         <div class="mt-auto px-3 pb-3">
           <div class="small text-muted mb-2">Publieke weergave</div>
+          {% if tournament.show_public_scoreboard %}
           <a href="{% url 'public_scoreboard' tournament.slug %}" target="_blank"
              class="btn btn-sm btn-outline-secondary w-100 mb-1">Scorebord</a>
+          {% endif %}
+          {% if tournament.show_public_standings %}
           <a href="{% url 'public_standings' tournament.slug %}" target="_blank"
              class="btn btn-sm btn-outline-secondary w-100 mb-1">Stand</a>
+          {% endif %}
+          {% if tournament.show_public_tables %}
           <a href="{% url 'public_tables' tournament.slug %}" target="_blank"
              class="btn btn-sm btn-outline-secondary w-100 mb-1">Tafels</a>
+          {% endif %}
+          {% if tournament.show_public_timer %}
           <a href="{% url 'public_timer' tournament.slug %}" target="_blank"
-             class="btn btn-sm btn-outline-secondary w-100">Timer</a>
+             class="btn btn-sm btn-outline-secondary w-100 mb-1">Timer</a>
+          {% endif %}
+          {% if tournament.show_public_rules %}
+          <a href="{% url 'public_rules' tournament.slug %}" target="_blank"
+             class="btn btn-sm btn-outline-secondary w-100">Afspraken</a>
+          {% endif %}
         </div>
         {% endif %}
-        <div class="px-3 pb-3 border-top pt-3">
+        <div class="px-3 pb-3 mt-auto border-top pt-3">
           <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'home' %}" class="btn btn-sm btn-ghost-secondary" title="Overzicht toernooien">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24"
+            <!-- Home-knop -->
+            <a href="{% url 'home' %}" class="btn btn-icon btn-ghost-secondary flex-shrink-0" title="Terug naar home">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
                    stroke-width="2" stroke="currentColor" fill="none">
                 <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
                 <path d="M5 12l-2 0l9 -9l9 9l-2 0"/>
                 <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/>
+                <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>
               </svg>
             </a>
-            <div class="flex-fill small text-truncate"><strong>{{ request.user.username }}</strong></div>
-            <form method="post" action="{% url 'logout' %}" class="d-inline flex-shrink-0">
-              {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-ghost-danger">Uitloggen</button>
-            </form>
+            <!-- Avatar-dropdown: dropup, opent naar rechts (geen dropdown-menu-end) -->
+            <div class="dropup">
+              <a href="#" class="d-flex align-items-center text-reset text-decoration-none"
+                 data-bs-toggle="dropdown" data-bs-strategy="fixed"
+                 aria-label="Gebruikersmenu" aria-expanded="false">
+                <span class="avatar avatar-sm"
+                      style="background-color: var(--tblr-primary, #206bc4); color:#fff; cursor:pointer;">
+                  {{ request.user.username|first|upper }}
+                </span>
+              </a>
+              <div class="dropdown-menu dropdown-menu-arrow" data-bs-theme="light"
+                   style="min-width:200px;">
+                <span class="dropdown-header text-truncate">{{ request.user.username }}</span>
+                <a href="{% url 'profile' %}" class="dropdown-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+                       viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
+                  </svg>
+                  Profiel wijzigen
+                </a>
+                <div class="dropdown-divider"></div>
+                <form method="post" action="{% url 'logout' %}" class="m-0">
+                  {% csrf_token %}
+                  <button type="submit" class="dropdown-item text-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+                         viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/>
+                      <path d="M7 12h14l-3 -3m0 6l3 -3"/>
+                    </svg>
+                    Uitloggen
+                  </button>
+                </form>
+              </div>
+            </div>
           </div>
         </div>
       </div>

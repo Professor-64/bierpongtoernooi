@@ -1,0 +1,37 @@
+{% comment %}
+Herbruikbare avatar-dropdown: profiel wijzigen + uitloggen.
+Gebruikt op het homescherm en onderaan de organizer-zijbalk.
+{% endcomment %}
+<div class="dropdown">
+  <a href="#" class="d-flex align-items-center text-reset text-decoration-none" data-bs-toggle="dropdown"
+     aria-label="Gebruikersmenu" aria-expanded="false">
+    <span class="avatar avatar-sm" style="background-color: var(--tblr-primary, #206bc4); color:#fff;">
+      {{ request.user.username|first|upper }}
+    </span>
+  </a>
+  <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow" data-bs-theme="light">
+    <span class="dropdown-header text-truncate">{{ request.user.username }}</span>
+    <a href="{% url 'profile' %}" class="dropdown-item">
+      <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+           viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <circle cx="12" cy="7" r="4"/>
+        <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
+      </svg>
+      Profiel wijzigen
+    </a>
+    <div class="dropdown-divider"></div>
+    <form method="post" action="{% url 'logout' %}" class="m-0">
+      {% csrf_token %}
+      <button type="submit" class="dropdown-item text-danger">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
+             viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/>
+          <path d="M7 12h14l-3 -3m0 6l3 -3"/>
+        </svg>
+        Uitloggen
+      </button>
+    </form>
+  </div>
+</div>

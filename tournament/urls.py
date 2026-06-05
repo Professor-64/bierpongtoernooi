@@ -6,6 +6,10 @@ urlpatterns = [
     path('', views.home, name='home'),
     path('nieuw/', views.tournament_create, name='tournament_create'),
 
+    # Auth: registratie & profiel
+    path('registreren/', views.register, name='register'),
+    path('profiel/', views.profile, name='profile'),
+
     # Platform-wide drinks management
     path('dranken/', views.drinks_manage, name='drinks_manage'),
 

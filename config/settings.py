@@ -15,6 +15,9 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = _env_bool('DEBUG', True)
 
+# Sta nieuwe organisatoren toe zich te registreren op het inlogscherm
+ALLOW_REGISTRATION = _env_bool('ALLOW_REGISTRATION', False)
+
 ALLOWED_HOSTS = [h.strip() for h in os.environ.get('ALLOWED_HOSTS', '*').split(',')]
 
 CSRF_TRUSTED_ORIGINS = [

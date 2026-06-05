@@ -266,6 +266,43 @@
               </div>
             </div>
 
+            <div class="card-body border-bottom">
+              <h4 class="card-title mb-1">Zichtbare pagina's</h4>
+              <p class="text-muted small mb-3">Kies welke tabbladen zichtbaar zijn voor het publiek.</p>
+              <div class="row g-2">
+                <div class="col-md-6">
+                  <label class="form-check form-switch">
+                    {% render_field display_form.show_public_scoreboard class="form-check-input" %}
+                    <span class="form-check-label">Scorebord</span>
+                  </label>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-check form-switch">
+                    {% render_field display_form.show_public_standings class="form-check-input" %}
+                    <span class="form-check-label">Stand</span>
+                  </label>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-check form-switch">
+                    {% render_field display_form.show_public_tables class="form-check-input" %}
+                    <span class="form-check-label">Tafels</span>
+                  </label>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-check form-switch">
+                    {% render_field display_form.show_public_timer class="form-check-input" %}
+                    <span class="form-check-label">Timer</span>
+                  </label>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-check form-switch">
+                    {% render_field display_form.show_public_rules class="form-check-input" %}
+                    <span class="form-check-label">Afspraken</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <div class="card-footer">
               <button type="submit" class="btn btn-primary">Opslaan</button>
             </div>

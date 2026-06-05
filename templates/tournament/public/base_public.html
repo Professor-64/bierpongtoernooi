@@ -31,16 +31,26 @@
     <div class="d-flex align-items-center gap-2" style="position:relative">
       <div class="header-timer" id="header-timer-display">--:--</div>
       <nav class="public-nav pub-nav-desktop d-flex align-items-center gap-1">
+        {% if tournament.show_public_scoreboard %}
         <a href="{% url 'public_scoreboard' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Scorebord</a>
+        {% endif %}
+        {% if tournament.show_public_standings %}
         <a href="{% url 'public_standings' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_standings' %}active{% endif %}">Stand</a>
+        {% endif %}
+        {% if tournament.show_public_tables %}
         <a href="{% url 'public_tables' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_tables' %}active{% endif %}">Tafels</a>
+        {% endif %}
+        {% if tournament.show_public_timer %}
         <a href="{% url 'public_timer' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_timer' %}active{% endif %}">Timer</a>
+        {% endif %}
+        {% if tournament.show_public_rules %}
         <a href="{% url 'public_rules' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_rules' %}active{% endif %}">Afspraken</a>
+        {% endif %}
       </nav>
       <button class="pub-hamburger" id="pub-hamburger" onclick="togglePubMenu()" aria-label="Menu">
         <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -49,16 +59,26 @@
         </svg>
       </button>
       <div class="pub-mobile-menu" id="pub-mobile-menu">
+        {% if tournament.show_public_scoreboard %}
         <a href="{% url 'public_scoreboard' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Scorebord</a>
+        {% endif %}
+        {% if tournament.show_public_standings %}
         <a href="{% url 'public_standings' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_standings' %}active{% endif %}">Stand</a>
+        {% endif %}
+        {% if tournament.show_public_tables %}
         <a href="{% url 'public_tables' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_tables' %}active{% endif %}">Tafels</a>
+        {% endif %}
+        {% if tournament.show_public_timer %}
         <a href="{% url 'public_timer' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_timer' %}active{% endif %}">Timer</a>
+        {% endif %}
+        {% if tournament.show_public_rules %}
         <a href="{% url 'public_rules' tournament.slug %}"
            class="{% if request.resolver_match.url_name == 'public_rules' %}active{% endif %}">Afspraken</a>
+        {% endif %}
       </div>
     </div>
   </div>

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Registreren - Bierpongtoernooi{% endblock %}
+
+{% block body_class %}d-flex flex-column{% endblock %}
+
+{% block body %}
+<div class="page page-center">
+  <div class="container container-tight py-4">
+    <div class="text-center mb-4">
+      <h1 class="display-5 fw-bold">Bierpongtoernooi</h1>
+      <p class="text-muted">Maak een organisator-account aan</p>
+    </div>
+    <div class="card card-md">
+      <div class="card-body">
+        <h2 class="h2 text-center mb-4">Registreren</h2>
+        <form method="post" autocomplete="off">
+          {% csrf_token %}
+          {% if form.non_field_errors %}
+            <div class="alert alert-danger mb-3">{{ form.non_field_errors }}</div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label">Gebruikersnaam</label>
+            {% render_field form.username class="form-control" placeholder="gebruikersnaam" autocomplete="off" %}
+            {% if form.username.errors %}<div class="invalid-feedback d-block">{{ form.username.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">E-mail <span class="text-muted">(optioneel)</span></label>
+            {% render_field form.email class="form-control" placeholder="naam@voorbeeld.be" autocomplete="off" %}
+            {% if form.email.errors %}<div class="invalid-feedback d-block">{{ form.email.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Wachtwoord</label>
+            {% render_field form.password1 class="form-control" autocomplete="new-password" %}
+            {% if form.password1.errors %}<div class="invalid-feedback d-block">{{ form.password1.errors|join:", " }}</div>{% endif %}
+            {% if form.password1.help_text %}<div class="form-hint">{{ form.password1.help_text|safe }}</div>{% endif %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Wachtwoord (bevestiging)</label>
+            {% render_field form.password2 class="form-control" autocomplete="new-password" %}
+            {% if form.password2.errors %}<div class="invalid-feedback d-block">{{ form.password2.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div class="form-footer">
+            <button type="submit" class="btn btn-primary w-100">Account aanmaken</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="text-center text-muted mt-3">
+      <small>Heb je al een account? <a href="{% url 'login' %}">Inloggen</a>.</small>
+    </div>
+  </div>
+</div>
+{% endblock %}

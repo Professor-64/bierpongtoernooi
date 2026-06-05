@@ -41,7 +41,11 @@
       </div>
     </div>
     <div class="text-center text-muted mt-3">
-      <small>Voor toegang heb je een account nodig van de beheerder.</small>
+      {% if allow_registration %}
+        <small>Nog geen account? <a href="{% url 'register' %}">Registreer hier</a>.</small>
+      {% else %}
+        <small>Voor toegang heb je een account nodig van de beheerder.</small>
+      {% endif %}
     </div>
   </div>
 </div>

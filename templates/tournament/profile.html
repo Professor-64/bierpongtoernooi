@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block title %}Mijn profiel{% endblock %}
+
+{% block body %}
+<div class="page-wrapper">
+  <div class="page-header d-print-none">
+    <div class="container-xl">
+      <div class="row g-2 align-items-center">
+        <div class="col">
+          <h2 class="page-title">Mijn profiel</h2>
+        </div>
+        <div class="col-auto ms-auto">
+          <a href="{% url 'home' %}" class="btn btn-ghost-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
+                 stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l-2 0l9 -9l9 9l-2 0"/>
+              <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"/>
+              <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>
+            </svg>
+            Terug naar home
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="container-xl">
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{% if message.tags == 'error' %}danger{% else %}{{ message.tags }}{% endif %} alert-dismissible mb-3" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <div class="row row-cards">
+        <!-- Profielgegevens -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Profielgegevens</h3></div>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="profile">
+              <div class="card-body">
+                <div class="mb-3">
+                  <label class="form-label">Gebruikersnaam</label>
+                  {% render_field profile_form.username class="form-control" %}
+                  {% if profile_form.username.errors %}<div class="invalid-feedback d-block">{{ profile_form.username.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="mb-1">
+                  <label class="form-label">E-mail</label>
+                  {% render_field profile_form.email class="form-control" %}
+                  {% if profile_form.email.errors %}<div class="invalid-feedback d-block">{{ profile_form.email.errors|join:", " }}</div>{% endif %}
+                </div>
+              </div>
+              <div class="card-footer">
+                <button type="submit" class="btn btn-primary">Profiel opslaan</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Wachtwoord wijzigen -->
+        <div class="col-md-6">
+          <div class="card">
+            <div class="card-header"><h3 class="card-title">Wachtwoord wijzigen</h3></div>
+            <form method="post" autocomplete="off">
+              {% csrf_token %}
+              <input type="hidden" name="form_type" value="password">
+              <div class="card-body">
+                {% if password_form.non_field_errors %}
+                  <div class="alert alert-danger">{{ password_form.non_field_errors }}</div>
+                {% endif %}
+                <div class="mb-3">
+                  <label class="form-label">Huidig wachtwoord</label>
+                  {% render_field password_form.old_password class="form-control" autocomplete="current-password" %}
+                  {% if password_form.old_password.errors %}<div class="invalid-feedback d-block">{{ password_form.old_password.errors|join:", " }}</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Nieuw wachtwoord</label>
+                  {% render_field password_form.new_password1 class="form-control" autocomplete="new-password" %}
+                  {% if password_form.new_password1.errors %}<div class="invalid-feedback d-block">{{ password_form.new_password1.errors|join:", " }}</div>{% endif %}
+                  {% if password_form.new_password1.help_text %}<div class="form-hint">{{ password_form.new_password1.help_text|safe }}</div>{% endif %}
+                </div>
+                <div class="mb-1">
+                  <label class="form-label">Bevestig nieuw wachtwoord</label>
+                  {% render_field password_form.new_password2 class="form-control" autocomplete="new-password" %}
+                  {% if password_form.new_password2.errors %}<div class="invalid-feedback d-block">{{ password_form.new_password2.errors|join:", " }}</div>{% endif %}
+                </div>
+              </div>
+              <div class="card-footer">
+                <button type="submit" class="btn btn-primary">Wachtwoord wijzigen</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

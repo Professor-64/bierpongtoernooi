@@ -117,6 +117,13 @@ class Tournament(models.Model):
         verbose_name='Wachtwoord publieke pagina\'s'
     )
 
+    # Zichtbaarheid publieke pagina's (tabbladen)
+    show_public_scoreboard = models.BooleanField(default=True, verbose_name='Scorebord tonen')
+    show_public_standings = models.BooleanField(default=True, verbose_name='Stand tonen')
+    show_public_tables = models.BooleanField(default=True, verbose_name='Tafels tonen')
+    show_public_timer = models.BooleanField(default=True, verbose_name='Timer tonen')
+    show_public_rules = models.BooleanField(default=True, verbose_name='Afspraken tonen')
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

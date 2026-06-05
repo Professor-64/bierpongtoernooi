@@ -1,5 +1,32 @@
 from django import forms
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.models import User
 from .models import Tournament, Team, Table, Drink
+
+
+class RegisterForm(UserCreationForm):
+    """Registratieformulier voor nieuwe organisatoren."""
+    email = forms.EmailField(required=False, label='E-mail (optioneel)')
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'password1', 'password2']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+
+class ProfileForm(forms.ModelForm):
+    """Profielgegevens (gebruikersnaam en e-mail) wijzigen."""
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+        }
 
 
 class TournamentCreateForm(forms.ModelForm):
@@ -67,6 +94,8 @@ class TournamentDisplayForm(forms.ModelForm):
             'table_display_cols', 'show_drinks_on_tables', 'table_orientation',
             'round_duration_minutes', 'show_timer_in_live',
             'public_refresh_seconds', 'public_password',
+            'show_public_scoreboard', 'show_public_standings',
+            'show_public_tables', 'show_public_timer', 'show_public_rules',
         ]
 
 

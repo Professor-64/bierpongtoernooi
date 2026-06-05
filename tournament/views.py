@@ -1,9 +1,13 @@
 import json
+from django.conf import settings
 from django.db.models import Q, F, ExpressionWrapper, IntegerField
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth import login, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib import messages
 from django.http import JsonResponse
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST, require_http_methods
@@ -13,6 +17,7 @@ from .forms import (
     TournamentCreateForm, TournamentGameForm, TournamentDisplayForm,
     TournamentSettingsForm, TournamentThemeForm,
     TournamentSoundForm, TournamentRulesForm, TeamForm, TableForm, DrinkForm,
+    RegisterForm, ProfileForm,
 )
 from .schedule import (
     generate_round_robin_schedule, generate_knockout_bracket,
@@ -37,6 +42,56 @@ def home(request):
     else:
         tournaments = []
     return render(request, 'tournament/home.html', {'tournaments': tournaments})
+
+
+# ==================== Auth: registratie & profiel ====================
+
+def register(request):
+    """Nieuwe organisator registreren. Alleen beschikbaar als ALLOW_REGISTRATION aanstaat."""
+    if not settings.ALLOW_REGISTRATION:
+        messages.error(request, 'Registratie is momenteel uitgeschakeld.')
+        return redirect('login')
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = RegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            messages.success(request, f'Welkom, {user.username}! Je account is aangemaakt.')
+            return redirect('home')
+    else:
+        form = RegisterForm()
+    return render(request, 'registration/register.html', {'form': form})
+
+
+@login_required
+def profile(request):
+    """Profielgegevens en wachtwoord wijzigen."""
+    profile_form = ProfileForm(instance=request.user)
+    password_form = PasswordChangeForm(user=request.user)
+
+    if request.method == 'POST':
+        form_type = request.POST.get('form_type')
+        if form_type == 'profile':
+            profile_form = ProfileForm(request.POST, instance=request.user)
+            if profile_form.is_valid():
+                profile_form.save()
+                messages.success(request, 'Profiel bijgewerkt.')
+                return redirect('profile')
+        elif form_type == 'password':
+            password_form = PasswordChangeForm(user=request.user, data=request.POST)
+            if password_form.is_valid():
+                user = password_form.save()
+                update_session_auth_hash(request, user)
+                messages.success(request, 'Wachtwoord gewijzigd.')
+                return redirect('profile')
+
+    return render(request, 'tournament/profile.html', {
+        'profile_form': profile_form,
+        'password_form': password_form,
+    })
 
 
 # ==================== Drinks (platform-wide) ====================
@@ -131,10 +186,21 @@ def tournament_dashboard(request, slug):
 def tournament_settings(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug, organizer=request.user)
 
-    active_tab = 'game'
+    valid_tabs = ('game', 'display', 'theme', 'rules')
+
+    def _redirect_to_tab(tab):
+        """Redirect terug naar instellingen en blijf op het juiste tabblad."""
+        url = reverse('tournament_settings', args=[tournament.slug])
+        return redirect(f'{url}?tab={tab}')
+
+    active_tab = request.GET.get('tab', 'game')
+    if active_tab not in valid_tabs:
+        active_tab = 'game'
 
     if request.method == 'POST':
         form_type = request.POST.get('form_type', 'game')
+
+        rules_form = TournamentRulesForm(instance=tournament)
 
         if form_type in ('game', 'settings'):
             old_format = tournament.format
@@ -155,7 +221,7 @@ def tournament_settings(request, slug):
                     messages.warning(request, 'Formaat gewijzigd — het schema is verwijderd. Maak een nieuw schema aan.')
                 else:
                     messages.success(request, 'Game-instellingen opgeslagen!')
-                return redirect('tournament_settings', slug=tournament.slug)
+                return _redirect_to_tab('game')
             active_tab = 'game'
 
         elif form_type == 'display':
@@ -166,7 +232,7 @@ def tournament_settings(request, slug):
             if display_form.is_valid():
                 display_form.save()
                 messages.success(request, 'Weergave-instellingen opgeslagen!')
-                return redirect('tournament_settings', slug=tournament.slug)
+                return _redirect_to_tab('display')
             active_tab = 'display'
 
         elif form_type == 'sounds':
@@ -177,7 +243,7 @@ def tournament_settings(request, slug):
             if sound_form.is_valid():
                 sound_form.save()
                 messages.success(request, 'Geluidsinstellingen opgeslagen!')
-                return redirect('tournament_settings', slug=tournament.slug)
+                return _redirect_to_tab('display')
             active_tab = 'display'
 
         elif form_type == 'rules':
@@ -189,7 +255,7 @@ def tournament_settings(request, slug):
             if rules_form.is_valid():
                 rules_form.save()
                 messages.success(request, 'Afspraken opgeslagen!')
-                return redirect('tournament_settings', slug=tournament.slug)
+                return _redirect_to_tab('rules')
             active_tab = 'rules'
 
         else:  # theme
@@ -201,7 +267,7 @@ def tournament_settings(request, slug):
             if theme_form.is_valid():
                 theme_form.save()
                 messages.success(request, 'Thema opgeslagen!')
-                return redirect('tournament_settings', slug=tournament.slug)
+                return _redirect_to_tab('theme')
             active_tab = 'theme'
     else:
         game_form = TournamentGameForm(instance=tournament)
@@ -1888,6 +1954,13 @@ def public_access(request, slug):
     })
 
 
+def _check_public_visible(tournament, flag_attr):
+    """Redirect naar de publieke startpagina als de gevraagde pagina verborgen is."""
+    if not getattr(tournament, flag_attr, True):
+        return redirect('public_home', slug=tournament.slug)
+    return None
+
+
 def public_home(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug)
     auth = _check_public_auth(request, tournament)
@@ -1901,6 +1974,9 @@ def public_scoreboard(request, slug):
     auth = _check_public_auth(request, tournament)
     if auth:
         return auth
+    hidden = _check_public_visible(tournament, 'show_public_scoreboard')
+    if hidden:
+        return hidden
     return render(request, 'tournament/public/scoreboard.html', {'tournament': tournament})
 
 
@@ -1909,6 +1985,9 @@ def public_standings(request, slug):
     auth = _check_public_auth(request, tournament)
     if auth:
         return auth
+    hidden = _check_public_visible(tournament, 'show_public_standings')
+    if hidden:
+        return hidden
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
     ).select_related('team'))
@@ -1923,6 +2002,9 @@ def public_tables(request, slug):
     auth = _check_public_auth(request, tournament)
     if auth:
         return auth
+    hidden = _check_public_visible(tournament, 'show_public_tables')
+    if hidden:
+        return hidden
     return render(request, 'tournament/public/tables.html', {'tournament': tournament})
 
 
@@ -1982,6 +2064,9 @@ def public_rules(request, slug):
     auth = _check_public_auth(request, tournament)
     if auth:
         return auth
+    hidden = _check_public_visible(tournament, 'show_public_rules')
+    if hidden:
+        return hidden
     content = tournament.custom_rules or _generate_auto_rules(tournament)
     return render(request, 'tournament/public/rules.html', {
         'tournament': tournament,
@@ -1994,6 +2079,9 @@ def public_timer(request, slug):
     auth = _check_public_auth(request, tournament)
     if auth:
         return auth
+    hidden = _check_public_visible(tournament, 'show_public_timer')
+    if hidden:
+        return hidden
     return render(request, 'tournament/public/timer.html', {'tournament': tournament})
 
 

@@ -4,6 +4,7 @@
 <div class="text-center py-5">
   <h1 class="display-5 fw-bold mb-5" style="color:#1e293b;">{{ tournament.name }}</h1>
   <div class="row justify-content-center g-3">
+    {% if tournament.show_public_scoreboard %}
     <div class="col-md-3 col-6">
       <a href="{% url 'public_scoreboard' tournament.slug %}"
          class="d-block text-decoration-none p-4 bg-white rounded-3 border"
@@ -12,6 +13,8 @@
         <div class="text-muted small">Live wedstrijden</div>
       </a>
     </div>
+    {% endif %}
+    {% if tournament.show_public_standings %}
     <div class="col-md-3 col-6">
       <a href="{% url 'public_standings' tournament.slug %}"
          class="d-block text-decoration-none p-4 bg-white rounded-3 border"
@@ -20,6 +23,8 @@
         <div class="text-muted small">Tussenstand</div>
       </a>
     </div>
+    {% endif %}
+    {% if tournament.show_public_tables %}
     <div class="col-md-3 col-6">
       <a href="{% url 'public_tables' tournament.slug %}"
          class="d-block text-decoration-none p-4 bg-white rounded-3 border"
@@ -28,6 +33,8 @@
         <div class="text-muted small">Wie speelt waar</div>
       </a>
     </div>
+    {% endif %}
+    {% if tournament.show_public_timer %}
     <div class="col-md-3 col-6">
       <a href="{% url 'public_timer' tournament.slug %}"
          class="d-block text-decoration-none p-4 bg-white rounded-3 border"
@@ -36,6 +43,17 @@
         <div class="text-muted small">Ronde aftelling</div>
       </a>
     </div>
+    {% endif %}
+    {% if tournament.show_public_rules %}
+    <div class="col-md-3 col-6">
+      <a href="{% url 'public_rules' tournament.slug %}"
+         class="d-block text-decoration-none p-4 bg-white rounded-3 border"
+         style="box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+        <div class="fw-bold" style="color:#1e293b;">Afspraken</div>
+        <div class="text-muted small">Regels &amp; afspraken</div>
+      </a>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
