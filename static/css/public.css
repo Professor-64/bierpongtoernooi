@@ -667,6 +667,31 @@ body {
 }
 .fr-rank-row.loser .fr-rank-score { color: #94a3b8; }
 
+/* ── QR-code page ────────────────────────────────────────────── */
+.qr-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: calc(100vh - 80px);
+  padding: 2rem 1rem; text-align: center;
+}
+.qr-card {
+  background: white; border-radius: 16px;
+  padding: 2.5rem 2rem;
+  box-shadow: 0 4px 24px rgba(0,0,0,.1);
+  cursor: pointer; transition: box-shadow .2s;
+}
+.qr-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.16); }
+.qr-title { font-size: 1.4rem; font-weight: 700; color: #1e293b; margin-bottom: .35rem; }
+.qr-sub   { font-size: .9rem; color: #64748b; margin-bottom: 1.5rem; }
+.qr-hint  { font-size: .75rem; color: #94a3b8; margin-top: 1rem; }
+#qr-small, #qr-large { display: flex; justify-content: center; }
+#qr-small img, #qr-small canvas,
+#qr-large img, #qr-large canvas { display: block; }
+.qr-modal-inner {
+  position: relative; background: white; border-radius: 16px;
+  padding: 2rem; display: inline-flex;
+  flex-direction: column; align-items: center; cursor: default;
+}
+
 /* ── Timer page ───────────────────────────────────────────────── */
 .timer-page {
   display: flex; flex-direction: column; align-items: center; justify-content: center;

@@ -1,0 +1,59 @@
+{% extends "tournament/public/base_public.html" %}
+
+{% block title %}QR-code — {{ tournament.name }}{% endblock %}
+
+{% block content %}
+<div class="qr-wrap">
+  <div class="qr-card" onclick="openQrModal()">
+    <div class="qr-title">{{ tournament.name }}</div>
+    <div class="qr-sub">Scan om de publieke pagina te openen</div>
+    <div id="qr-small"></div>
+    <div class="qr-hint">Klik om te vergroten</div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="qr-modal" class="pub-modal" onclick="closeQrModal()">
+  <div class="qr-modal-inner" onclick="event.stopPropagation()">
+    <button class="pub-modal-close" onclick="closeQrModal()" aria-label="Sluiten">&times;</button>
+    <div id="qr-large"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function () {
+  var url = '{{ public_url|escapejs }}';
+
+  new QRCode(document.getElementById('qr-small'), {
+    text: url, width: 220, height: 220,
+    colorDark: '#1e293b', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+
+  var largeRendered = false;
+  function renderLarge() {
+    if (largeRendered) return;
+    largeRendered = true;
+    new QRCode(document.getElementById('qr-large'), {
+      text: url, width: 360, height: 360,
+      colorDark: '#1e293b', colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  }
+
+  window.openQrModal = function () {
+    renderLarge();
+    document.getElementById('qr-modal').classList.add('open');
+  };
+  window.closeQrModal = function () {
+    document.getElementById('qr-modal').classList.remove('open');
+  };
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeQrModal();
+  });
+})();
+</script>
+{% endblock %}

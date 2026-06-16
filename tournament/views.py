@@ -184,6 +184,10 @@ def tournament_dashboard(request, slug):
     # Progress percentage
     progress = int(matches_done / matches_total * 100) if matches_total > 0 else 0
 
+    qr_url = request.build_absolute_uri(reverse('public_home', args=[slug]))
+    if tournament.public_password:
+        qr_url += f'?pwd={tournament.public_password}'
+
     return render(request, 'tournament/organizer/dashboard.html', {
         'tournament': tournament,
         'teams_count': teams_count,
@@ -193,6 +197,7 @@ def tournament_dashboard(request, slug):
         'matches_live': matches_live,
         'top_standings': standings,
         'progress': progress,
+        'qr_url': qr_url,
     })
 
 
@@ -1946,6 +1951,11 @@ def _check_public_auth(request, tournament):
     session_key = f'public_auth_{tournament.slug}'
     if request.session.get(session_key) == tournament.public_password:
         return None
+    # Auto-login via ?pwd= query parameter (ingebouwd in QR-code)
+    pwd_param = request.GET.get('pwd', '')
+    if pwd_param and pwd_param == tournament.public_password:
+        request.session[session_key] = tournament.public_password
+        return None
     next_path = request.get_full_path()
     return redirect(f'/p/{tournament.slug}/toegang/?next={next_path}')
 
@@ -2102,6 +2112,23 @@ def public_timer(request, slug):
     if hidden:
         return hidden
     return render(request, 'tournament/public/timer.html', {'tournament': tournament})
+
+
+def public_qr(request, slug):
+    tournament = get_object_or_404(Tournament, slug=slug)
+    auth = _check_public_auth(request, tournament)
+    if auth:
+        return auth
+    hidden = _check_public_visible(tournament, 'show_public_qr')
+    if hidden:
+        return hidden
+    public_url = request.build_absolute_uri(reverse('public_home', args=[slug]))
+    if tournament.public_password:
+        public_url += f'?pwd={tournament.public_password}'
+    return render(request, 'tournament/public/qr.html', {
+        'tournament': tournament,
+        'public_url': public_url,
+    })
 
 
 # ==================== API ====================

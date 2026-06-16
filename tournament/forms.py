@@ -99,6 +99,7 @@ class TournamentDisplayForm(forms.ModelForm):
             'public_refresh_seconds', 'public_password',
             'show_public_scoreboard', 'show_public_standings',
             'show_public_tables', 'show_public_timer', 'show_public_rules',
+            'show_public_qr',
         ]
 
 

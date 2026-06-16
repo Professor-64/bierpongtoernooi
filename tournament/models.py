@@ -140,6 +140,7 @@ class Tournament(models.Model):
     show_public_tables = models.BooleanField(default=True, verbose_name='Tafels tonen')
     show_public_timer = models.BooleanField(default=True, verbose_name='Timer tonen')
     show_public_rules = models.BooleanField(default=True, verbose_name='Afspraken tonen')
+    show_public_qr = models.BooleanField(default=False, verbose_name='QR-code pagina tonen')
 
     created_at = models.DateTimeField(auto_now_add=True)
 

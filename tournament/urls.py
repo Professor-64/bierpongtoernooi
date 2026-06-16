@@ -39,6 +39,7 @@ urlpatterns = [
     path('p/<slug:slug>/tafels/', views.public_tables, name='public_tables'),
     path('p/<slug:slug>/timer/', views.public_timer, name='public_timer'),
     path('p/<slug:slug>/afspraken/', views.public_rules, name='public_rules'),
+    path('p/<slug:slug>/qr/', views.public_qr, name='public_qr'),
     path('p/<slug:slug>/toegang/', views.public_access, name='public_access'),
 
     # API

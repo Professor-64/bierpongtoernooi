@@ -47,7 +47,7 @@
         <div class="h1 mb-3">{{ matches_done }}<span class="text-muted fs-4">/{{ matches_total }}</span></div>
         {% if matches_total > 0 %}
           <div class="progress progress-sm">
-            <div class="progress-bar" style="width: {{ progress }}%"></div>
+            <div class="progress-bar" style="width: {{ progress }}"></div>
           </div>
           <div class="text-muted small mt-1">{{ progress }}% afgespeeld</div>
         {% else %}
@@ -138,7 +138,7 @@
         <div class="d-grid gap-2">
           <a href="{% url 'public_scoreboard' tournament.slug %}" target="_blank"
              class="btn btn-outline-secondary d-flex justify-content-between">
-            <span>Live Scorebord</span>
+            <span>Wedstrijden</span>
             <span class="text-muted small">/p/{{ tournament.slug }}/scorebord/</span>
           </a>
           <a href="{% url 'public_standings' tournament.slug %}" target="_blank"
@@ -156,9 +156,56 @@
             <span>Timer</span>
             <span class="text-muted small">/p/{{ tournament.slug }}/timer/</span>
           </a>
+          <div class="d-flex gap-2">
+            {% if tournament.show_public_qr %}
+            <a href="{% url 'public_qr' tournament.slug %}" target="_blank"
+               class="btn btn-outline-secondary d-flex justify-content-between flex-fill">
+              <span>QR-code pagina</span>
+              <span class="text-muted small">/p/{{ tournament.slug }}/qr/</span>
+            </a>
+            {% endif %}
+            <button type="button" id="dashboard-qr-download" class="btn btn-outline-primary {% if not tournament.show_public_qr %}w-100{% else %}flex-shrink-0{% endif %}" title="Download QR als PNG">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                   stroke-width="2" stroke="currentColor" fill="none" class="me-1">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2"/>
+                <polyline points="7 11 12 16 17 11"/>
+                <line x1="12" y1="4" x2="12" y2="16"/>
+              </svg>
+              Download QR
+            </button>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+(function () {
+  var btn = document.getElementById('dashboard-qr-download');
+  if (!btn) return;
+  // Render off-screen zodat canvas afmetingen heeft
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'position:absolute;top:-9999px;left:-9999px;';
+  document.body.appendChild(wrap);
+  new QRCode(wrap, {
+    text: '{{ qr_url|escapejs }}',
+    width: 512, height: 512,
+    colorDark: '#1e293b', colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+  btn.addEventListener('click', function () {
+    var canvas = wrap.querySelector('canvas');
+    if (!canvas) return;
+    var a = document.createElement('a');
+    a.download = 'qr-{{ tournament.slug }}.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+  });
+})();
+</script>
 {% endblock %}
