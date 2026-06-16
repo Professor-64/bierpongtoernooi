@@ -43,7 +43,7 @@ class TournamentCreateForm(forms.ModelForm):
 
 
 class TournamentGameForm(forms.ModelForm):
-    """Game-tab: naam, formaat, schema-instellingen, play-offs."""
+    """Game-tab: naam, formaat, schema-instellingen, play-offs, gelijkstand."""
     class Meta:
         model = Tournament
         fields = [
@@ -51,8 +51,11 @@ class TournamentGameForm(forms.ModelForm):
             'games_per_team', 'knockout_advancement', 'schedule_efficient',
             'points_win', 'points_draw', 'points_loss', 'points_bonus_all_cups',
             'playoff_enabled', 'playoff_count', 'final_ranking_enabled',
-            'groups_count',
+            'groups_count', 'tiebreaker_order',
         ]
+        widgets = {
+            'tiebreaker_order': forms.HiddenInput(),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

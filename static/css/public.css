@@ -96,18 +96,35 @@ body {
 }
 .sound-unlock-btn:hover { opacity: .9; }
 
-/* ── Scoreboard ──────────────────────────────────────────────── */
-.match-row {
-  background: white; border-radius: 10px;
-  padding: 1rem 1.25rem; margin-bottom: .6rem;
-  border: 1px solid #e2e8f0; border-left: 4px solid #e2e8f0;
-  transition: border-color .3s;
+/* ── Wedstrijden (scoreboard) ────────────────────────────────── */
+.phase-group {
+  border: 1.5px solid color-mix(in srgb, var(--bp-primary) 35%, transparent);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: .75rem;
 }
-.match-row.live     { border-left-color: var(--bp-primary); box-shadow: 0 2px 8px rgba(0,0,0,.06); }
-.match-row.finished { opacity: .7; }
+.phase-group-header {
+  background: color-mix(in srgb, var(--bp-primary) 12%, white);
+  padding: .4rem .9rem;
+  font-size: .78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em;
+  color: var(--bp-primary);
+}
+.phase-group-body { padding: 0; }
+
+.match-row {
+  background: white;
+  padding: .85rem 1rem;
+  border: none;
+  border-top: 1px solid #f1f5f9;
+}
+.phase-group-body .match-row:first-child { border-top: none; }
+.match-row.live     { background: #fafffe; }
+.match-row.finished { opacity: .75; }
 .score-big          { font-size: 1.8rem; font-weight: 800; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; }
 .team-name-pub      { font-size: 1rem; font-weight: 600; color: #1e293b; }
-.section-label      { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .5rem; margin-top: 1rem; }
+.section-label      { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .5rem; margin-top: 1.25rem; }
+.section-label:first-child { margin-top: 0; }
 .live-indicator     { display: inline-block; width: 8px; height: 8px; background: var(--bp-primary); border-radius: 50%; animation: bp-pulse 1.2s infinite; }
 
 /* ── Standings table ─────────────────────────────────────────── */

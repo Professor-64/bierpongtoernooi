@@ -26,12 +26,26 @@ from .schedule import (
 )
 
 
-def _standings_annotate_order(qs):
-    """Annotate with cup_diff and apply tiebreaker ordering:
-    punten → bekerverschil → meest gescoord → minste tegen."""
-    return qs.annotate(
+_TIEBREAKER_DB = {
+    'points':        '-points',
+    'cup_diff':      '-cup_diff',
+    'cups_scored':   '-cups_scored',
+    'cups_conceded': 'cups_conceded',
+}
+_TIEBREAKER_DEFAULT = ['points', 'cup_diff', 'cups_scored', 'cups_conceded']
+
+
+def _standings_annotate_order(qs, tournament=None):
+    """Annotate with cup_diff and sort by the tournament's configured tiebreaker order."""
+    qs = qs.annotate(
         cup_diff=ExpressionWrapper(F('cups_scored') - F('cups_conceded'), output_field=IntegerField())
-    ).order_by('-points', '-cup_diff', '-cups_scored', 'cups_conceded')
+    )
+    order_keys = (
+        (tournament.tiebreaker_order or _TIEBREAKER_DEFAULT)
+        if tournament else _TIEBREAKER_DEFAULT
+    )
+    db_order = [_TIEBREAKER_DB[k] for k in order_keys if k in _TIEBREAKER_DB]
+    return qs.order_by(*db_order)
 
 
 # ==================== Home ====================
@@ -165,7 +179,7 @@ def tournament_dashboard(request, slug):
 
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
-    ).select_related('team'))[:5]
+    ).select_related('team'), tournament=tournament)[:5]
 
     # Progress percentage
     progress = int(matches_done / matches_total * 100) if matches_total > 0 else 0
@@ -818,7 +832,7 @@ def _get_teams_from_groups(tournament):
     for group in tournament.groups.all().order_by('number'):
         qs = _standings_annotate_order(Standing.objects.filter(
             tournament=tournament, phase='group', group=group,
-        ).select_related('team'))
+        ).select_related('team'), tournament=tournament)
         sl = list(qs)
         if not sl:
             # Fallback: no standings yet → use team order
@@ -929,7 +943,7 @@ def _get_ranked_teams(tournament):
     """Return all teams ordered by round-robin standings (or team order as fallback)."""
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
-    ).select_related('team'))
+    ).select_related('team'), tournament=tournament)
     ranked = [s.team for s in standings]
     if not ranked:
         ranked = list(tournament.teams.all())
@@ -1990,7 +2004,7 @@ def public_standings(request, slug):
         return hidden
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
-    ).select_related('team'))
+    ).select_related('team'), tournament=tournament)
     return render(request, 'tournament/public/standings.html', {
         'tournament': tournament,
         'standings': standings,
@@ -2049,11 +2063,16 @@ def _generate_auto_rules(tournament):
         p.append(f'<li><strong>Bonus</strong> (alle {t.cup_count} bekers omgegooid): +{t.points_bonus_all_cups} punt</li>')
     p.append('</ul>')
 
+    _tb_labels = {
+        'points':        'Punten',
+        'cup_diff':      'Bekerverschil (bekers gescoord − bekers tegen)',
+        'cups_scored':   'Meeste bekers gescoord',
+        'cups_conceded': 'Minste bekers tegen',
+    }
+    tb_order = t.tiebreaker_order or _TIEBREAKER_DEFAULT
     p.append('<h3>Gelijkstand</h3><ol>')
-    p.append('<li>Punten</li>')
-    p.append('<li>Bekerverschil (bekers gescoord − bekers tegen)</li>')
-    p.append('<li>Meeste bekers gescoord</li>')
-    p.append('<li>Minste bekers tegen</li>')
+    for key in tb_order:
+        p.append(f'<li>{_tb_labels.get(key, key)}</li>')
     p.append('</ol>')
 
     return ''.join(p)
@@ -2116,7 +2135,7 @@ def ranking_preview(request, slug):
         phase = 'round_robin'
     standings_qs = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase=phase,
-    ).select_related('team'))
+    ).select_related('team'), tournament=tournament)
     standings_map = {s.team_id: s for s in standings_qs}
 
     all_teams = ko_teams + po_teams + fr_teams
@@ -2213,7 +2232,7 @@ def api_standings(request, slug):
         for group in tournament.groups.all().order_by('number'):
             grp_standings = _standings_annotate_order(Standing.objects.filter(
                 tournament=tournament, phase='group', group=group,
-            ).select_related('team'))
+            ).select_related('team'), tournament=tournament)
             groups_data.append({
                 'name': group.name,
                 'number': group.number,
@@ -2239,7 +2258,7 @@ def api_standings(request, slug):
 
     standings = _standings_annotate_order(Standing.objects.filter(
         tournament=tournament, phase='round_robin'
-    ).select_related('team'))
+    ).select_related('team'), tournament=tournament)
 
     n_ko = tournament.knockout_advancement if tournament.format == Tournament.FORMAT_COMBINED else 0
     n_po = (tournament.playoff_count if tournament.playoff_enabled else 0) if tournament.format == Tournament.FORMAT_COMBINED else 0

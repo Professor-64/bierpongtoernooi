@@ -33,7 +33,7 @@
       <nav class="public-nav pub-nav-desktop d-flex align-items-center gap-1">
         {% if tournament.show_public_scoreboard %}
         <a href="{% url 'public_scoreboard' tournament.slug %}"
-           class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Scorebord</a>
+           class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Wedstrijden</a>
         {% endif %}
         {% if tournament.show_public_standings %}
         <a href="{% url 'public_standings' tournament.slug %}"
@@ -61,7 +61,7 @@
       <div class="pub-mobile-menu" id="pub-mobile-menu">
         {% if tournament.show_public_scoreboard %}
         <a href="{% url 'public_scoreboard' tournament.slug %}"
-           class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Scorebord</a>
+           class="{% if request.resolver_match.url_name == 'public_scoreboard' %}active{% endif %}">Wedstrijden</a>
         {% endif %}
         {% if tournament.show_public_standings %}
         <a href="{% url 'public_standings' tournament.slug %}"

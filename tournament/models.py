@@ -109,6 +109,23 @@ class Tournament(models.Model):
 
     custom_rules = models.TextField(blank=True, default='', verbose_name='Aanvullende afspraken (aanpasbaar)')
 
+    # Volgorde gelijkstandcriteria (drag-and-drop in instellingen)
+    TIEBREAKER_CHOICES = [
+        ('points',       'Punten'),
+        ('cup_diff',     'Bekerverschil (gescoord − tegen)'),
+        ('cups_scored',  'Meeste bekers gescoord'),
+        ('cups_conceded','Minste bekers tegen'),
+    ]
+    TIEBREAKER_DEFAULT = ['points', 'cup_diff', 'cups_scored', 'cups_conceded']
+
+    def _tiebreaker_default():
+        return ['points', 'cup_diff', 'cups_scored', 'cups_conceded']
+
+    tiebreaker_order = models.JSONField(
+        default=_tiebreaker_default,
+        verbose_name='Volgorde gelijkstand'
+    )
+
     public_refresh_seconds = models.PositiveIntegerField(
         default=5, verbose_name='Verversingstijd publieke pagina\'s (seconden)'
     )
@@ -118,7 +135,7 @@ class Tournament(models.Model):
     )
 
     # Zichtbaarheid publieke pagina's (tabbladen)
-    show_public_scoreboard = models.BooleanField(default=True, verbose_name='Scorebord tonen')
+    show_public_scoreboard = models.BooleanField(default=True, verbose_name='Wedstrijden tonen')
     show_public_standings = models.BooleanField(default=True, verbose_name='Stand tonen')
     show_public_tables = models.BooleanField(default=True, verbose_name='Tafels tonen')
     show_public_timer = models.BooleanField(default=True, verbose_name='Timer tonen')

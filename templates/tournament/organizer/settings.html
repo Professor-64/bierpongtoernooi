@@ -158,6 +158,16 @@
               </div>
             </div>
 
+            <!-- Gelijkstand volgorde (drag-and-drop, zichtbaar voor alle niet-knockout formaten) -->
+            <div id="section-gelijkstand" class="card-body border-bottom" hidden>
+              <h4 class="card-title mb-1">Gelijkstand</h4>
+              <p class="text-muted small mb-3">Sleep de criteria in de gewenste volgorde.</p>
+              {% render_field game_form.tiebreaker_order %}
+              <ul id="tiebreaker-list" class="list-group tiebreaker-sortable">
+                <!-- gevuld door JS op basis van de hidden input -->
+              </ul>
+            </div>
+
             <!-- Play-offs & Finale ranking -->
             <div id="section-playoffs-header" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Play-offs &amp; Finale ranking</h4>
@@ -273,7 +283,7 @@
                 <div class="col-md-6">
                   <label class="form-check form-switch">
                     {% render_field display_form.show_public_scoreboard class="form-check-input" %}
-                    <span class="form-check-label">Scorebord</span>
+                    <span class="form-check-label">Wedstrijden</span>
                   </label>
                 </div>
                 <div class="col-md-6">
@@ -447,7 +457,8 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script src="/static/js/organizer-settings.js?v=2"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+<script src="/static/js/organizer-settings.js?v=3"></script>
 <!-- Quill WYSIWYG for Afspraken tab -->
 <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>

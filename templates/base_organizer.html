@@ -113,7 +113,7 @@
           <div class="small text-muted mb-2">Publieke weergave</div>
           {% if tournament.show_public_scoreboard %}
           <a href="{% url 'public_scoreboard' tournament.slug %}" target="_blank"
-             class="btn btn-sm btn-outline-secondary w-100 mb-1">Scorebord</a>
+             class="btn btn-sm btn-outline-secondary w-100 mb-1">Wedstrijden</a>
           {% endif %}
           {% if tournament.show_public_standings %}
           <a href="{% url 'public_standings' tournament.slug %}" target="_blank"
@@ -134,7 +134,7 @@
         </div>
         {% endif %}
         <div class="px-3 pb-3 mt-auto border-top pt-3">
-          <div class="d-flex align-items-center gap-2">
+          <div class="d-flex align-items-center justify-content-end gap-2">
             <!-- Home-knop -->
             <a href="{% url 'home' %}" class="btn btn-icon btn-ghost-secondary flex-shrink-0" title="Terug naar home">
               <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24"
@@ -145,45 +145,38 @@
                 <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"/>
               </svg>
             </a>
-            <!-- Avatar-dropdown: dropup, opent naar rechts (geen dropdown-menu-end) -->
-            <div class="dropup">
-              <a href="#" class="d-flex align-items-center text-reset text-decoration-none"
-                 data-bs-toggle="dropdown" data-bs-strategy="fixed"
-                 aria-label="Gebruikersmenu" aria-expanded="false">
-                <span class="avatar avatar-sm"
-                      style="background-color: var(--tblr-primary, #206bc4); color:#fff; cursor:pointer;">
-                  {{ request.user.username|first|upper }}
-                </span>
-              </a>
-              <div class="dropdown-menu dropdown-menu-arrow" data-bs-theme="light"
-                   style="min-width:200px;">
-                <span class="dropdown-header text-truncate">{{ request.user.username }}</span>
-                <a href="{% url 'profile' %}" class="dropdown-item">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
-                       viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <circle cx="12" cy="7" r="4"/>
-                    <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/>
-                  </svg>
-                  Profiel wijzigen
-                </a>
-                <div class="dropdown-divider"></div>
-                <form method="post" action="{% url 'logout' %}" class="m-0">
-                  {% csrf_token %}
-                  <button type="submit" class="dropdown-item text-danger">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24"
-                         viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/>
-                      <path d="M7 12h14l-3 -3m0 6l3 -3"/>
-                    </svg>
-                    Uitloggen
-                  </button>
-                </form>
-              </div>
-            </div>
+            <!-- Avatar-knop -->
+            <button type="button" id="sidebar-avatar-btn" title="Gebruikersmenu">
+              <span class="avatar avatar-sm"
+                    style="background-color:var(--tblr-primary,#206bc4);color:#fff;">
+                {{ request.user.username|first|upper }}
+              </span>
+            </button>
           </div>
         </div>
+
+        <!-- Floating gebruikersmenu (wordt via organizer-base.js naar body verplaatst) -->
+        <div id="sidebar-avatar-menu">
+          <span class="sam-header">{{ request.user.username }}</span>
+          <hr class="sam-divider">
+          <a href="{% url 'profile' %}" class="sam-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="7" r="4"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+            Profiel wijzigen
+          </a>
+          <a href="{% url 'drinks_manage' %}" class="sam-item">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 11h14l-1.419 9.397a2 2 0 0 1 -1.973 1.603h-7.216a2 2 0 0 1 -1.973 -1.603z"/><path d="M11 11l1 -7h2l.5 -2"/><path d="M5 7h2.5l2.5 -4"/></svg>
+            Dranken
+          </a>
+          <hr class="sam-divider">
+          <form method="post" action="{% url 'logout' %}" class="m-0">
+            {% csrf_token %}
+            <button type="submit" class="sam-item danger">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2"/><path d="M7 12h14l-3 -3m0 6l3 -3"/></svg>
+              Uitloggen
+            </button>
+          </form>
+        </div>
+        <script src="/static/js/organizer-base.js?v=1"></script>
       </div>
     </div>
   </aside>
