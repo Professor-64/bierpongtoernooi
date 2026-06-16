@@ -867,6 +867,16 @@ body {
 .rules-wrap li { margin-bottom: .35rem; }
 .rules-wrap strong { color: #0f172a; }
 
+/* ── Public footer ───────────────────────────────────────────── */
+.pub-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .75rem 1.5rem;
+  font-size: .75rem; color: rgba(255,255,255,.5);
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+.pub-footer-center { text-align: center; flex: 1; }
+.pub-footer-right  { text-align: right; }
+
 /* ── Password access page ─────────────────────────────────────── */
 .access-wrap {
   min-height: 70vh;
