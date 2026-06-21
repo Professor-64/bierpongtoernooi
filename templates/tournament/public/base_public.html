@@ -91,11 +91,6 @@
   <div class="main-content">
     {% block content %}{% endblock %}
   </div>
-  <footer class="pub-footer">
-    <div class="pub-footer-col">© Michiel Six {% now "Y" %}</div>
-    <div class="pub-footer-col pub-footer-center">{{ tournament.name }}</div>
-    <div class="pub-footer-col pub-footer-right">v1.0.0</div>
-  </footer>
   <script src="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/js/tabler.min.js"></script>
   <script>const PUBLIC_CONFIG = { slug: '{{ tournament.slug }}', refreshSeconds: {{ tournament.public_refresh_seconds }} };</script>
   <script src="/static/js/public-base.js"></script>

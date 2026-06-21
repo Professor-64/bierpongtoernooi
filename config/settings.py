@@ -61,6 +61,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'tournament.context_processors.app_settings',
             ],
         },
     },
@@ -128,3 +129,5 @@ if _env_bool('SECURE_PROXY_SSL_HEADER_ENABLED', False):
 USE_X_FORWARDED_HOST = _env_bool('USE_X_FORWARDED_HOST', False)
 SECURE_CONTENT_TYPE_NOSNIFF = _env_bool('SECURE_CONTENT_TYPE_NOSNIFF', False)
 X_FRAME_OPTIONS = os.environ.get('X_FRAME_OPTIONS', 'SAMEORIGIN')
+
+APP_VERSION = 'v1.0.0'

@@ -324,7 +324,10 @@ def tournament_delete(request, slug):
 @login_required
 def teams_manage(request, slug):
     tournament = get_object_or_404(Tournament, slug=slug, organizer=request.user)
-    teams = tournament.teams.prefetch_related('players').select_related('drink').all()
+    teams = tournament.teams.prefetch_related('players').select_related('drink').order_by('name')
+
+    def _name_key(name):
+        return name.lower().replace(' ', '')
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -334,6 +337,12 @@ def teams_manage(request, slug):
             if form.is_valid():
                 team = form.save(commit=False)
                 team.tournament = tournament
+                new_key = _name_key(team.name)
+                if tournament.teams.filter().extra(
+                    where=["LOWER(REPLACE(name,' ','')) = %s"], params=[new_key]
+                ).exists():
+                    messages.error(request, f'Er bestaat al een ploeg met de naam "{team.name}".')
+                    return redirect('teams_manage', slug=slug)
                 team.save()
                 players_text = form.cleaned_data.get('players_text', '')
                 for line in players_text.splitlines():
@@ -367,6 +376,13 @@ def teams_manage(request, slug):
             name = request.POST.get('name', '').strip()
             drink_id = request.POST.get('drink_id', '').strip()
             if name:
+                new_key = _name_key(name)
+                duplicate = tournament.teams.exclude(id=team.id).extra(
+                    where=["LOWER(REPLACE(name,' ','')) = %s"], params=[new_key]
+                ).exists()
+                if duplicate:
+                    messages.error(request, f'Er bestaat al een ploeg met de naam "{name}".')
+                    return redirect('teams_manage', slug=slug)
                 team.name = name
                 if drink_id:
                     try:
