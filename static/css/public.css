@@ -122,7 +122,7 @@ body {
 .match-row.live     { background: #fafffe; }
 .match-row.finished { opacity: .75; }
 .score-big          { font-size: 1.8rem; font-weight: 800; min-width: 2.5ch; text-align: center; font-variant-numeric: tabular-nums; flex: 0 0 auto; }
-.match-row .flex-fill { min-width: 0; flex-basis: 0; }
+.match-row .flex-fill { flex: 1 1 0% !important; min-width: 0; }
 .team-name-pub      { font-size: 1rem; font-weight: 600; color: #1e293b; overflow-wrap: break-word; word-break: break-word; }
 .section-label      { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: #64748b; margin-bottom: .5rem; margin-top: 1.25rem; }
 .section-label:first-child { margin-top: 0; }
