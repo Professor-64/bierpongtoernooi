@@ -37,3 +37,6 @@ Thumbs.db
 Bierpongtournooi.md
 CLAUDE.md
 problemen_opmerkingen.md
+
+#compose file
+docker-compose.yml
