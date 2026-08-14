@@ -99,6 +99,13 @@ class Tournament(models.Model):
     sound_end = models.FileField(upload_to='sounds/', null=True, blank=True, verbose_name='Geluid ronde einde')
     sound_warning = models.FileField(upload_to='sounds/', null=True, blank=True, verbose_name='Geluid 30s waarschuwing')
 
+    # Knock-out: golden goal bij gelijkstand
+    golden_goal_enabled = models.BooleanField(
+        default=False,
+        verbose_name='Golden goal inschakelen',
+        help_text='Bij gelijkstand in een knock-outwedstrijd gaat de ploeg door die als eerste scoorde.',
+    )
+
     # Feature 3: Play-offs
     playoff_enabled = models.BooleanField(default=False, verbose_name='Play-offs inschakelen')
     playoff_count = models.PositiveIntegerField(default=4, verbose_name='Ploegen in play-offs')
@@ -280,6 +287,13 @@ class Match(models.Model):
         (PHASE_FINAL_RANKING, 'Finale ranking'),
     ]
 
+    # Fases waar een gelijkspel geen geldige uitslag is: er moet altijd één
+    # ploeg doorstoten (of een plaats innemen). Enkel hier is golden goal zinvol.
+    KNOCKOUT_PHASES = [
+        PHASE_QUARTERFINAL, PHASE_SEMIFINAL, PHASE_THIRD_PLACE,
+        PHASE_FINAL, PHASE_PLAYOFF, PHASE_FINAL_RANKING,
+    ]
+
     tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name='matches')
     phase = models.CharField(max_length=20, choices=PHASE_CHOICES, default=PHASE_ROUND_ROBIN)
     round_number = models.PositiveIntegerField(default=1)
@@ -296,6 +310,8 @@ class Match(models.Model):
     score2 = models.PositiveIntegerField(default=0)
     bonus_team1 = models.BooleanField(default=False)
     bonus_team2 = models.BooleanField(default=False)
+    golden_goal_team1 = models.BooleanField(default=False)
+    golden_goal_team2 = models.BooleanField(default=False)
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_SCHEDULED)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -318,12 +334,36 @@ class Match(models.Model):
         t2 = self.team2.name if self.team2 else 'TBD'
         return f"{t1} vs {t2} (Ronde {self.round_number})"
 
+    @property
+    def is_knockout_phase(self):
+        return self.phase in self.KNOCKOUT_PHASES
+
+    @property
+    def golden_goal_winner(self):
+        """1 of 2 wanneer een gelijkstand beslist is met golden goal, anders None.
+
+        Enkel zinvol bij gelijke score in een knock-outfase; wanneer beide (of
+        geen) vinkjes aan staan is er geen beslissing.
+        """
+        if self.score1 != self.score2 or not self.is_knockout_phase:
+            return None
+        if self.golden_goal_team1 and not self.golden_goal_team2:
+            return 1
+        if self.golden_goal_team2 and not self.golden_goal_team1:
+            return 2
+        return None
+
     def get_winner(self):
         if self.status != self.STATUS_FINISHED:
             return None
         if self.score1 > self.score2:
             return self.team1
         elif self.score2 > self.score1:
+            return self.team2
+        gg = self.golden_goal_winner
+        if gg == 1:
+            return self.team1
+        if gg == 2:
             return self.team2
         return None
 
@@ -334,10 +374,17 @@ class Match(models.Model):
             return self.team1
         elif self.score2 < self.score1:
             return self.team2
+        gg = self.golden_goal_winner
+        if gg == 1:
+            return self.team2
+        if gg == 2:
+            return self.team1
         return None
 
     def is_draw(self):
-        return self.status == self.STATUS_FINISHED and self.score1 == self.score2
+        return (self.status == self.STATUS_FINISHED
+                and self.score1 == self.score2
+                and self.golden_goal_winner is None)
 
 
 class Standing(models.Model):

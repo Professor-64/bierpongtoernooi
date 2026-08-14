@@ -15,7 +15,10 @@ function drinkBadge(d) {
 function matchState(m) { return m ? m.status : 'free'; }
 function winner(m) {
   if (!m || m.status !== 'finished') return 0;
-  return m.score1 > m.score2 ? 1 : m.score2 > m.score1 ? 2 : 0;
+  if (m.score1 > m.score2) return 1;
+  if (m.score2 > m.score1) return 2;
+  // Gelijkstand in de knock-out: de golden goal wijst de winnaar aan.
+  return m.golden_goal || 0;
 }
 
 /* ── Name bar ────────────────────────────────────────────────── */
@@ -172,27 +175,42 @@ function _updateModalTimer() {
 }
 
 /* ── Main refresh ────────────────────────────────────────────── */
+let _lastTablesRenderKey = null;
+
 async function refresh() {
+  const scrollX = window.scrollX, scrollY = window.scrollY;
+  const gridWrap = document.querySelector('.tables-grid-wrap');
+  const gridWrapScrollLeft = gridWrap ? gridWrap.scrollLeft : 0;
   try {
     const r    = await fetch(`/api/${PUBLIC_CONFIG.slug}/tables/`);
     const data = await r.json();
     showDrinks      = data.show_drinks !== false;
-    _lastTablesData = data;
+    _lastTablesData = data;  // always kept fresh — the open table modal reads from this directly
 
-    const orientation = data.orientation || 'horizontal';
-    const cols        = data.cols || 4;
-    const grid        = document.getElementById('tables-grid');
-
-    grid.style.gridTemplateColumns =
-      orientation === 'vertical' ? `repeat(${cols}, auto)` : `repeat(${cols}, 1fr)`;
-
-    const html = data.tables.map(t =>
-      orientation === 'vertical' ? cardV(t, t.match) : cardH(t, t.match)
-    ).join('');
-
-    grid.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">Geen tafels</div>';
     document.getElementById('last-update').textContent =
       'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-BE');
+
+    // Skip rebuilding the grid when nothing changed since the last poll —
+    // avoids needless flicker of the table cards.
+    const renderKey = JSON.stringify({ tables: data.tables, orientation: data.orientation, cols: data.cols, showDrinks });
+    if (renderKey !== _lastTablesRenderKey) {
+      _lastTablesRenderKey = renderKey;
+
+      const orientation = data.orientation || 'horizontal';
+      const cols        = data.cols || 4;
+      const grid        = document.getElementById('tables-grid');
+
+      grid.style.gridTemplateColumns =
+        orientation === 'vertical' ? `repeat(${cols}, auto)` : `repeat(${cols}, 1fr)`;
+
+      const html = data.tables.map(t =>
+        orientation === 'vertical' ? cardV(t, t.match) : cardH(t, t.match)
+      ).join('');
+
+      grid.innerHTML = html || '<div style="grid-column:1/-1;text-align:center;color:#94a3b8">Geen tafels</div>';
+      window.scrollTo(scrollX, scrollY);
+      if (gridWrap) gridWrap.scrollLeft = gridWrapScrollLeft;
+    }
 
     if (_modalTableId) _renderModal();
   } catch(e) { console.error(e); }

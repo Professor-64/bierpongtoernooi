@@ -92,7 +92,7 @@ function renderGroupsStandings(groups) {
       : '';
     html += legendHtml;
     html += `<h4 class="grp-heading mb-2 fw-bold">${g.name}</h4>`;
-    html += `<table class="standings-table mb-4">${thead}<tbody>${standingsTableRows(g.standings, koLine, poLine)}</tbody></table>`;
+    html += `<div class="standings-table-wrap mb-4"><table class="standings-table">${thead}<tbody>${standingsTableRows(g.standings, koLine, poLine)}</tbody></table></div>`;
   });
   const el = document.getElementById('groups-section');
   el.innerHTML = html || '';
@@ -120,8 +120,9 @@ function renderFinalRankingTable(matches, start) {
     const live   = m.status === 'in_progress';
     const cls    = done ? 'finished' : live ? 'in_progress' : 'scheduled';
 
-    const w1     = done && m.score1 > m.score2;
-    const w2     = done && m.score2 > m.score1;
+    const gg     = done ? (m.golden_goal || null) : null;
+    const w1     = done && (m.score1 > m.score2 || gg === 1);
+    const w2     = done && (m.score2 > m.score1 || gg === 2);
 
     // Determine final positions when match is done
     const pos1   = done ? (w1 ? r1 : r2) : null;
@@ -133,16 +134,16 @@ function renderFinalRankingTable(matches, start) {
 
     const medalCls = (pos) => pos === 1 ? 'r1' : pos === 2 ? 'r2' : pos === 3 ? 'r3' : '';
 
-    const row = (team, score, isWinner, pos) => `
+    const row = (team, score, isWinner, pos, isGg) => `
       <div class="fr-rank-row ${isWinner ? 'winner' : done ? 'loser' : ''} ${medalCls(pos)}">
         <span class="fr-rank-pos">${pos !== null ? pos : '?'}</span>
-        <span class="fr-rank-team">${team || 'TBD'}</span>
+        <span class="fr-rank-team">${team || 'TBD'}${isGg ? ' <span class="bk-gg" title="Won met golden goal">GG</span>' : ''}</span>
         ${done ? `<span class="fr-rank-score">${score}</span>` : ''}
       </div>`;
 
     // Show winner first (lower/better position), loser second
-    const topRow    = done && w2 ? row(m.team2, m.score2, w2, pos2) : row(m.team1, m.score1, w1, pos1);
-    const bottomRow = done && w2 ? row(m.team1, m.score1, w1, pos1) : row(m.team2, m.score2, w2, pos2);
+    const topRow    = done && w2 ? row(m.team2, m.score2, w2, pos2, gg === 2) : row(m.team1, m.score1, w1, pos1, gg === 1);
+    const bottomRow = done && w2 ? row(m.team1, m.score1, w1, pos1, gg === 1) : row(m.team2, m.score2, w2, pos2, gg === 2);
 
     html += `<div class="fr-rank-group ${cls}">
       <div class="fr-rank-header">
@@ -151,6 +152,7 @@ function renderFinalRankingTable(matches, start) {
       </div>
       ${topRow}
       ${bottomRow}
+      ${ggNoteHtml(m, 'fr-gg-note')}
     </div>`;
   });
   return html + '</div>';
@@ -161,16 +163,19 @@ function renderMatchList(matches) {
   return `<div class="fr-grid">` +
     matches.map(m => {
       const done   = m.status === 'finished';
-      const w1     = done && m.score1 > m.score2;
-      const w2     = done && m.score2 > m.score1;
+      const gg     = done ? (m.golden_goal || null) : null;
+      const w1     = done && (m.score1 > m.score2 || gg === 1);
+      const w2     = done && (m.score2 > m.score1 || gg === 2);
       const cls    = m.status || '';
       const tbl    = m.table ? `<span class="b-table-lbl d-block mt-1">${m.table}</span>` : '';
       const t1cls  = w1 ? 'fr-team-winner' : (done && !w1 ? 'fr-team-loser' : '');
       const t2cls  = w2 ? 'fr-team-winner' : (done && !w2 ? 'fr-team-loser' : '');
+      const ggTag  = t => gg === t ? ' <span class="bk-gg" title="Won met golden goal">GG</span>' : '';
       return `<div class="fr-match ${cls}">
-        <div class="fr-team ${t1cls}">${m.team1 || 'TBD'}</div>
+        <div class="fr-team ${t1cls}">${m.team1 || 'TBD'}${ggTag(1)}</div>
         <div class="fr-score">${done ? `${m.score1} – ${m.score2}` : '<span class="fr-vs">vs</span>'}${tbl}</div>
-        <div class="fr-team text-end ${t2cls}">${m.team2 || 'TBD'}</div>
+        <div class="fr-team text-end ${t2cls}">${m.team2 || 'TBD'}${ggTag(2)}</div>
+        ${ggNoteHtml(m, 'fr-gg-note')}
       </div>`;
     }).join('') + `</div>`;
 }
@@ -181,10 +186,25 @@ function renderMatchList(matches) {
    Regels worden na render getekend via SVG.
    ─────────────────────────────────────────────────────────────── */
 
+/** Naam van de ploeg die een gelijkstand met golden goal won, of null. */
+function ggWinnerName(m) {
+  if (!m || !m.golden_goal) return null;
+  return m.golden_goal === 1 ? m.team1 : m.team2;
+}
+
+/** Regeltje onder een wedstrijd dat de golden goal verduidelijkt. */
+function ggNoteHtml(m, cls) {
+  const winner = ggWinnerName(m);
+  if (!winner) return '';
+  return `<div class="${cls || 'bk-gg-note'}">Gelijkstand ${m.score1}–${m.score2} — `
+       + `<strong>${winner}</strong> wint met golden goal</div>`;
+}
+
 /**
  * Bepaal de staat van één team in een wedstrijd.
- * Geeft { name, score, state } terug.
+ * Geeft { name, score, state, gg } terug.
  * state: 'winner' | 'loser' | 'live' | 'pending' | 'tbd'
+ * gg:    true wanneer dit team de golden goal scoorde
  */
 function bkTeamInfo(match, which) {
   if (!match) return { name: null, score: null, state: 'tbd' };
@@ -193,22 +213,26 @@ function bkTeamInfo(match, which) {
   if (!name) return { name: null, score: null, state: 'tbd' };
   if (match.status === 'in_progress') return { name, score, state: 'live' };
   if (match.status === 'finished') {
-    const won = which === 1 ? match.score1 > match.score2 : match.score2 > match.score1;
-    return { name, score, state: won ? 'winner' : 'loser' };
+    const gg  = match.golden_goal || null;
+    const won = which === 1
+      ? (match.score1 > match.score2 || gg === 1)
+      : (match.score2 > match.score1 || gg === 2);
+    return { name, score, state: won ? 'winner' : 'loser', gg: gg === which };
   }
   return { name, score: null, state: 'pending' };
 }
 
 /** Bouw één team-slot HTML. id mag leeg zijn. */
 function bkSlot(id, info) {
-  const { name, score, state } = info;
+  const { name, score, state, gg } = info;
   const showScore = (state === 'winner' || state === 'loser' || state === 'live')
     && score !== null && score !== undefined;
   const idAttr  = id ? ` id="${id}"` : '';
   const indicator = state === 'live'
     ? '<span class="bk-pulse"></span>'
     : '<span class="bk-dot"></span>';
-  return `<div class="bk-slot ${state}"${idAttr}>${indicator}<span class="bk-name">${name || 'TBD'}</span>${showScore ? `<span class="bk-score">${score}</span>` : ''}</div>`;
+  const ggTag = gg ? '<span class="bk-gg" title="Won met golden goal">GG</span>' : '';
+  return `<div class="bk-slot ${state}"${idAttr}>${indicator}<span class="bk-name">${name || 'TBD'}</span>${ggTag}${showScore ? `<span class="bk-score">${score}</span>` : ''}</div>`;
 }
 
 /**
@@ -237,6 +261,7 @@ function bkFinalCol(fin) {
       <div class="bk-final-box" id="bk-final-box">
         ${bkSlot('', t1)}
         ${bkSlot('', t2)}
+        ${ggNoteHtml(fin)}
         ${champion ? `<div class="bk-champion">&#127942; Kampioen: ${champion}</div>` : ''}
       </div>
     </div>
@@ -338,6 +363,7 @@ function renderBracket(bracket) {
       <div class="bk-final-box bk-third-box">
         ${bkSlot('', t1)}
         ${bkSlot('', t2)}
+        ${ggNoteHtml(trd)}
         ${thirdWinner ? `<div class="bk-third-winner">&#127949; 3e Plaats: ${thirdWinner}</div>` : ''}
       </div>
     </div>`;
@@ -362,30 +388,55 @@ function renderBracket(bracket) {
                  └──────→ destSlot / finale-box
    ─────────────────────────────────────────────────────────────── */
 
-function drawBracketLines() {
-  const wrap = document.getElementById('bk-wrap');
-  const svg  = document.getElementById('bk-svg');
+function drawBracketLines(root) {
+  // `root` scopes every lookup to one bracket instance. Without this, the
+  // background page (#bracket-render) and the fullscreen "Volledig scherm"
+  // modal clone (#standings-modal-content) — which is a raw innerHTML copy
+  // that reuses the exact same ids (bk-wrap, bk-qf1-t1, …) and is never
+  // cleared on close — both contain elements with the same id. A bare
+  // document.getElementById() always resolves to whichever copy happens to
+  // sit first in the DOM, so lines could end up measured against one
+  // bracket instance and drawn into (or read from) the other — exactly the
+  // "jumping to the wrong spot" glitch.
+  root = root || document;
+  const wrap = root.querySelector('.bk-wrap');
+  const svg  = wrap ? wrap.querySelector('.bk-svg') : null;
   if (!wrap || !svg) return;
 
   svg.innerHTML = '';
-  const wRect = wrap.getBoundingClientRect();
-  svg.setAttribute('width',   wRect.width);
-  svg.setAttribute('height',  wRect.height);
-  svg.setAttribute('viewBox', `0 0 ${wRect.width} ${wRect.height}`);
+  // Size the SVG to the full *content* box, not the visible viewport box:
+  // .bk-wrap scrolls horizontally, so its content is usually wider than
+  // what's on screen and lines drawn past clientWidth must still exist.
+  const svgW = wrap.scrollWidth;
+  const svgH = wrap.scrollHeight;
+  svg.setAttribute('width',   svgW);
+  svg.setAttribute('height',  svgH);
+  svg.setAttribute('viewBox', `0 0 ${svgW} ${svgH}`);
 
   const GREY  = '#cbd5e1';
   const GREEN = '#22c55e';
 
-  // Bounding rect van een element relatief aan de wrap
+  // Position of an element in the wrap's CONTENT coordinate space.
+  //
+  // The SVG is position:absolute inside .bk-wrap, which is the overflow-x:auto
+  // scroll container — so the SVG is anchored to the content origin and scrolls
+  // with the content. getBoundingClientRect() is viewport-relative, and
+  // wrap's own rect does NOT move when scrolled, so subtracting it alone
+  // leaves the two spaces out of sync by exactly scrollLeft/scrollTop.
+  // Adding the scroll offset back converts into the SVG's space.
+  //
+  // This was invisible while the bracket was always at scrollLeft 0; once
+  // scroll position started being preserved across refreshes, every redraw
+  // at a non-zero scroll offset shifted the lines by that amount.
   function pos(id) {
-    const el = document.getElementById(id);
+    const el = wrap.querySelector('#' + id);
     if (!el) return null;
     const w = wrap.getBoundingClientRect();
     const e = el.getBoundingClientRect();
     return {
-      left:  e.left  - w.left,
-      right: e.right - w.left,
-      cy:    (e.top  + e.bottom) / 2 - w.top,
+      left:  e.left  - w.left + wrap.scrollLeft,
+      right: e.right - w.left + wrap.scrollLeft,
+      cy:    (e.top  + e.bottom) / 2 - w.top + wrap.scrollTop,
     };
   }
 
@@ -401,7 +452,7 @@ function drawBracketLines() {
   }
 
   function isWinner(id) {
-    const el = document.getElementById(id);
+    const el = wrap.querySelector('#' + id);
     return el ? el.classList.contains('winner') : false;
   }
 
@@ -434,12 +485,27 @@ function drawBracketLines() {
     svg.appendChild(makePath(`M ${midX} ${top.cy} V ${midY}`, topWin ? GREEN : GREY));
     // Verticale balk: onderhelft (midY → bot.cy) groen als bot winnaar
     svg.appendChild(makePath(`M ${midX} ${midY} V ${bot.cy}`, botWin ? GREEN : GREY));
-    // Uitgaande lijn naar doel (groen als er een winnaar doorgaat)
-    svg.appendChild(makePath(`M ${midX} ${midY} H ${toX}`, (topWin || botWin) ? GREEN : GREY));
+
+    // Uitgaande lijn naar het doel-slot (groen als er een winnaar doorgaat).
+    //
+    // Loopt expliciet naar dest.cy in plaats van door te tekenen op midY.
+    // Vroeger werd aangenomen dat het midpunt van een paar exact samenvalt
+    // met het center van het doel-slot; dat klopte alleen zolang álle slots
+    // even hoog waren. Nu ploegnamen mogen teruglopen kan een rij hoger
+    // worden dan zijn buren, en dan wijkt dest.cy af van midY. Door een
+    // verticaal tussenstuk te tekenen komt de lijn altijd exact op het
+    // doel-slot uit, ongeacht de hoogtes.
+    // Bij gelijke hoogtes is het V-segment 0 lang en ziet de lijn er
+    // identiek uit als voorheen (één rechte horizontale lijn).
+    const elbowX = (midX + toX) / 2;
+    svg.appendChild(makePath(
+      `M ${midX} ${midY} H ${elbowX} V ${dest.cy} H ${toX}`,
+      (topWin || botWin) ? GREEN : GREY
+    ));
   }
 
-  const hasQF = !!document.getElementById('bk-qf1-t1');
-  const hasSF = !!document.getElementById('bk-sf1-t1');
+  const hasQF = !!wrap.querySelector('#bk-qf1-t1');
+  const hasSF = !!wrap.querySelector('#bk-sf1-t1');
 
   if (hasQF && hasSF) {
     // Linker kant: QF-paren → SF-slots → Finale
@@ -454,15 +520,106 @@ function drawBracketLines() {
     drawBracket('bk-sf1-t1', 'bk-sf1-t2', 'bk-final-box', 'right');
     drawBracket('bk-sf2-t1', 'bk-sf2-t2', 'bk-final-box', 'left');
   }
+
+  // Align the 3rd/4th-place box under the Final column. CSS (flex
+  // centering on .bk-third-section) centers it across the *whole* bracket
+  // width, which only coincides with the Final column by accident, and
+  // stops working entirely once the bracket scrolls horizontally on a
+  // narrow screen. Correct it with a measured pixel offset instead.
+  const thirdSection = wrap.querySelector('.bk-third-section');
+  const finalBox      = wrap.querySelector('#bk-final-box');
+  if (thirdSection && finalBox) {
+    thirdSection.style.transform = '';
+    const finalRect = finalBox.getBoundingClientRect();
+    const thirdRect = thirdSection.getBoundingClientRect();
+    const dx = (finalRect.left + finalRect.width / 2) - (thirdRect.left + thirdRect.width / 2);
+    thirdSection.style.transform = `translateX(${dx}px)`;
+  }
 }
 
-window.addEventListener('resize', drawBracketLines);
+/* Redraw whichever bracket instance is actually on screen right now — the
+   background page, or the fullscreen modal clone if it's open. */
+function _visibleBracketRoot() {
+  const modal = document.getElementById('standings-modal');
+  const modalContent = document.getElementById('standings-modal-content');
+  if (modal && modal.classList.contains('open') && modalContent?.querySelector('.bk-wrap')) {
+    return modalContent;
+  }
+  return document.getElementById('bracket-render');
+}
+window.addEventListener('resize', () => drawBracketLines(_visibleBracketRoot()));
+
+/* The lines are absolute pixel geometry measured from the laid-out slots, so
+   anything that moves or resizes a slot must trigger a redraw — a longer team
+   name wrapping to a second line, a score appearing and widening a slot, a
+   font finally loading, the phone rotating. A window resize listener alone
+   misses all of those, since they change the bracket without changing the
+   window. */
+const _bkResizeObserver = typeof ResizeObserver !== 'undefined'
+  ? new ResizeObserver(() => {
+      // Redraw is cheap (a handful of <path> nodes) but must not run
+      // synchronously inside the observer callback, or it can trigger the
+      // "ResizeObserver loop completed with undelivered notifications"
+      // warning by mutating layout while notifications are still flushing.
+      // Drawing only writes SVG path data, which cannot feed back into
+      // layout, so this settles after one pass.
+      requestAnimationFrame(() => drawBracketLines(_visibleBracketRoot()));
+    })
+  : null;
+
+/* Point the observer at the currently-rendered bracket.
+   Observes the individual slots, not just the wrap: rows are sized with
+   `grid-auto-rows: 1fr`, so when one slot needs more height than its share
+   it grows and its siblings shrink — the column's *total* height can stay
+   exactly the same while every slot centre inside it moves. Watching only
+   the wrap would see nothing happen and leave the lines pointing at where
+   the boxes used to be. */
+function _observeBracket(root) {
+  if (!_bkResizeObserver || !root) return;
+  // Drop previous targets so detached nodes from the last render don't
+  // linger and fire spurious zero-size callbacks.
+  _bkResizeObserver.disconnect();
+  const wrap = root.querySelector('.bk-wrap');
+  if (!wrap) return;
+  _bkResizeObserver.observe(wrap);
+  wrap.querySelectorAll('.bk-slot, .bk-final-box').forEach(el => _bkResizeObserver.observe(el));
+}
+
+/* Capture/restore horizontal scroll of elements matched by a selector,
+   keyed by position — used for containers whose content (and therefore
+   whose actual scrollable node, e.g. #bk-wrap) gets rebuilt from scratch
+   on every refresh, which would otherwise reset scrollLeft to 0. */
+function _captureScrollLefts(selector) {
+  return Array.from(document.querySelectorAll(selector)).map(el => el.scrollLeft);
+}
+function _restoreScrollLefts(selector, values) {
+  document.querySelectorAll(selector).forEach((el, i) => {
+    if (values[i]) el.scrollLeft = values[i];
+  });
+}
 
 /* ── Refresh loop ─────────────────────────────────────────────── */
+let _lastStandingsKey = null;
+
 async function refresh() {
+  const scrollX = window.scrollX, scrollY = window.scrollY;
+  const tableScrollLefts = _captureScrollLefts('.standings-table-wrap');
+  const bkWrap = document.getElementById('bk-wrap');
+  const bkScrollLeft = bkWrap ? bkWrap.scrollLeft : 0;
   try {
     const r    = await fetch(`/api/${PUBLIC_CONFIG.slug}/standings/`);
     const data = await r.json();
+
+    document.getElementById('last-update').textContent =
+      'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-BE');
+
+    // Nothing actually changed since the last poll — skip the re-render.
+    // Rebuilding the bracket's DOM (and therefore its SVG) on every poll,
+    // even when the data is identical, is what made the connector lines
+    // flicker/jump on every refresh.
+    const dataKey = JSON.stringify(data);
+    if (dataKey === _lastStandingsKey) return;
+    _lastStandingsKey = dataKey;
 
     const groupsSec    = document.getElementById('groups-section');
     const standingsSec = document.getElementById('standings-section');
@@ -476,6 +633,7 @@ async function refresh() {
       standingsSec.style.display = '';
       renderStandings(data.standings || []);
     }
+    _restoreScrollLefts('.standings-table-wrap', tableScrollLefts);
 
     const bracketEl = document.getElementById('bracket-section');
     const renderEl  = document.getElementById('bracket-render');
@@ -483,7 +641,15 @@ async function refresh() {
       const html = renderBracket(data.bracket);
       renderEl.innerHTML      = html;
       bracketEl.style.display = html ? '' : 'none';
-      if (html) requestAnimationFrame(drawBracketLines);
+      if (html) requestAnimationFrame(() => {
+        // Restore scroll BEFORE drawing: the line coordinates are computed
+        // in the wrap's content space using its current scroll offset, so
+        // the scroll position has to be final before we measure.
+        const newBkWrap = renderEl.querySelector('.bk-wrap');
+        if (newBkWrap) newBkWrap.scrollLeft = bkScrollLeft;
+        drawBracketLines(renderEl);
+        _observeBracket(renderEl);
+      });
     } else {
       bracketEl.style.display = 'none';
     }
@@ -506,13 +672,13 @@ async function refresh() {
       frEl.style.display = 'none';
     }
 
-    document.getElementById('last-update').textContent =
-      'Bijgewerkt: ' + new Date().toLocaleTimeString('nl-BE');
+    // Mirror the freshly-rendered sections into the fullscreen modal if it's
+    // open — the whole point of the modal is to watch a section live.
+    _stnRenderModal();
+
+    window.scrollTo(scrollX, scrollY);
   } catch(e) { console.error(e); }
 }
-
-refresh();
-setInterval(refresh, (PUBLIC_CONFIG.refreshSeconds || 5) * 1000);
 
 /* ── Standings section modal ──────────────────────────────────── */
 
@@ -544,15 +710,15 @@ async function _stnUpdateTimer() {
   } catch(e) { el.style.display = 'none'; }
 }
 
-function standingsOpenModal(key, groupName) {
-  const modal   = document.getElementById('standings-modal');
-  const wrap    = document.getElementById('standings-modal-wrap');
-  const content = document.getElementById('standings-modal-content');
-  if (!modal || !content) return;
+/* Which section the modal is currently showing, or null when closed.
+   The modal mirrors a background section, and those sections are re-rendered
+   with fresh data on every poll — so remembering what's on display lets the
+   refresh loop re-clone it and keep the fullscreen view live. */
+let _stnModalState = null;
 
-  /* Wide variant for all section types except plain standings */
-  wrap.classList.toggle('is-wide', ['bracket', 'groups', 'playoff', 'final_ranking'].includes(key));
-
+/* Build the {title, inner} pair for a section by cloning the (already
+   refreshed) background DOM. Called both on open and on every refresh. */
+function _stnModalContent(key, groupName) {
   let title = SECTION_TITLES[key] || groupName || key;
   if (key === 'standings') title = document.getElementById('standings-title')?.textContent || 'Stand';
 
@@ -564,8 +730,8 @@ function standingsOpenModal(key, groupName) {
   } else if (key === 'final_ranking') {
     inner = document.getElementById('final-ranking-render')?.innerHTML || '';
   } else if (key === 'standings') {
-    const tbl = document.querySelector('#standings-section .standings-table');
-    inner = tbl ? tbl.outerHTML : '';
+    const wrap = document.querySelector('#standings-section .standings-table-wrap');
+    inner = wrap ? wrap.outerHTML : '';
   } else if (key === 'groups') {
     // Show only the specific group that was clicked
     // Use data-grp-name to avoid matching button text inside the h4
@@ -575,7 +741,7 @@ function standingsOpenModal(key, groupName) {
       for (const h4 of h4s) {
         if (h4.dataset.grpName === groupName) {
           let el = h4.nextElementSibling;
-          while (el && !el.classList.contains('standings-table')) el = el.nextElementSibling;
+          while (el && !el.classList.contains('standings-table-wrap')) el = el.nextElementSibling;
           if (el) inner = el.outerHTML;
           break;
         }
@@ -583,11 +749,50 @@ function standingsOpenModal(key, groupName) {
     }
     if (!inner) inner = section?.innerHTML || '';  // fallback: all groups
   }
+  return { title, inner };
+}
 
+/* (Re)paint the open modal from the current background DOM, preserving the
+   viewer's scroll position inside it so a refresh doesn't yank the view. */
+function _stnRenderModal() {
+  if (!_stnModalState) return;
+  const { key, groupName } = _stnModalState;
+  const content = document.getElementById('standings-modal-content');
+  if (!content) return;
+
+  const bodyScrollTop  = content.scrollTop;
+  const bodyScrollLeft = content.scrollLeft;
+  const innerWrap      = content.querySelector('.bk-wrap');
+  const innerScrollLeft = innerWrap ? innerWrap.scrollLeft : 0;
+
+  const { title, inner } = _stnModalContent(key, groupName);
   content.innerHTML = `<div class="standings-modal-title">${title}</div>${inner}`;
-  modal.classList.add('open');
 
-  if (key === 'bracket') requestAnimationFrame(drawBracketLines);
+  content.scrollTop  = bodyScrollTop;
+  content.scrollLeft = bodyScrollLeft;
+
+  if (key === 'bracket') requestAnimationFrame(() => {
+    // Scroll first, then measure — the line geometry is computed in the
+    // wrap's content space from its current scroll offset.
+    const newWrap = content.querySelector('.bk-wrap');
+    if (newWrap) newWrap.scrollLeft = innerScrollLeft;
+    drawBracketLines(content);
+    _observeBracket(content);
+  });
+}
+
+function standingsOpenModal(key, groupName) {
+  const modal   = document.getElementById('standings-modal');
+  const wrap    = document.getElementById('standings-modal-wrap');
+  const content = document.getElementById('standings-modal-content');
+  if (!modal || !content) return;
+
+  /* Wide variant for all section types except plain standings */
+  wrap.classList.toggle('is-wide', ['bracket', 'groups', 'playoff', 'final_ranking'].includes(key));
+
+  _stnModalState = { key, groupName };
+  _stnRenderModal();
+  modal.classList.add('open');
 
   /* Timer */
   clearInterval(_stnTimerInterval);
@@ -599,7 +804,16 @@ function standingsCloseModal(evt) {
   if (evt && evt.target !== document.getElementById('standings-modal')) return;
   document.getElementById('standings-modal')?.classList.remove('open');
   clearInterval(_stnTimerInterval);
+  _stnModalState = null;
   document.getElementById('standings-modal-timer').style.display = 'none';
+  // Drop the cloned content — it's a raw innerHTML copy that reuses the
+  // background page's ids (bk-wrap, bk-qf1-t1, …), so leaving it in the DOM
+  // creates duplicate ids that confuse later id-based lookups.
+  const content = document.getElementById('standings-modal-content');
+  if (content) content.innerHTML = '';
+  // The observer was pointed at the modal's (now discarded) slots; hand it
+  // back to the page bracket so resizes keep redrawing before the next poll.
+  _observeBracket(document.getElementById('bracket-render'));
 }
 
 /* Add expand buttons to dynamically rendered group sections */
@@ -619,3 +833,9 @@ function _addGroupModalBtns() {
     h4.appendChild(btn);
   });
 }
+
+/* ── Bootstrap ────────────────────────────────────────────────────
+   Kick off the poll loop last, so every declaration above (including the
+   modal state the refresh loop touches) is initialised before it runs. */
+refresh();
+setInterval(refresh, (PUBLIC_CONFIG.refreshSeconds || 5) * 1000);

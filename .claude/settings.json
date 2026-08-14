@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(& \"$env:USERPROFILE\\\\anaconda3\\\\shell\\\\condabin\\\\conda-hook.ps1\"; conda activate django-env; python manage.py makemigrations tournament)",
+      "PowerShell($env:PYTHONPATH = \"C:\\\\Users\\\\michi\\\\Documents\\\\Git\\\\bierpongtoernooi\"; & \"C:\\\\Users\\\\michi\\\\miniconda3\\\\envs\\\\django-env\\\\python.exe\" \"C:\\\\Users\\\\michi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--Users-michi-Documents-Git-bierpongtoernooi\\\\fda25421-2a56-4876-be65-91e4380d20d2\\\\scratchpad\\\\gg_test.py\")",
+      "Bash(node --check static/js/public-standings.js)",
+      "Bash(node --check static/js/public-scoreboard.js)",
+      "Bash(node --check static/js/organizer-live.js)",
+      "Bash(node --check static/js/public-tables.js)",
+      "Bash(node --check static/js/organizer-settings.js)"
+    ]
+  }
+}

@@ -84,6 +84,13 @@
 .match-card.status-scheduled   { border-left: 4px solid var(--tblr-secondary); }
 .match-card.is-hidden          { opacity: .45; border-left: 4px solid var(--tblr-danger) !important; }
 
+/* Golden goal-vinkjes: eigen accentkleur zodat ze niet te verwarren zijn
+   met de bonusvinkjes er net boven. */
+.match-card .gg-check-row .form-check-input:checked {
+  background-color: var(--tblr-azure);
+  border-color: var(--tblr-azure);
+}
+
 /* Table name */
 .table-name-label {
   font-size: 1rem;
@@ -125,8 +132,22 @@
   width: 34px; height: 34px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
   font-size: 1.05rem; font-weight: 700;
+  touch-action: manipulation;
 }
 .team-name { font-size: 1rem; font-weight: 600; }
+
+/* Live panel buttons on a touch device — explicit touch-action avoids any
+   double-tap/zoom ambiguity delaying or swallowing the tap, and on small
+   screens the score +/- buttons grow past Apple/Google's ~44px minimum
+   touch-target size so they're not mis-tapped against the number input
+   squeezed between them. */
+.match-card .btn { touch-action: manipulation; }
+@media (max-width: 576px) {
+  .score-btn { width: 44px; height: 44px; font-size: 1.3rem; }
+  .score-input { width: 56px; }
+  .card-body .d-flex.align-items-center.gap-2 { gap: .6rem !important; }
+  .card-footer .btn { min-height: 40px; }
+}
 
 /* Timer bar */
 .timer-bar {

@@ -2,6 +2,18 @@
 
 * { box-sizing: border-box; }
 
+/* Never let the page itself scroll horizontally — same reasoning as the
+   public pages: a single element wider than the viewport (a wide table, the
+   live-panel match grid, a filter row) otherwise pushes the whole document
+   wider, and since the sidebar/header stay viewport-width, scrolling right
+   reveals blank background past them. Anything that legitimately needs
+   horizontal scroll (e.g. .ko-table-scroll) gets its own overflow-x:auto
+   wrapper instead. */
+html, body {
+  overflow-x: hidden;
+  width: 100%;
+}
+
 /* Pulsing animation — used by .animate-pulse helper class */
 @keyframes bp-pulse {
   0%, 100% { opacity: 1; }

@@ -128,6 +128,19 @@
               </div>
             </div>
 
+            <!-- Knock-out — enkel wanneer er een knock-outfase is -->
+            <div id="section-knockout" class="card-body border-bottom" hidden>
+              <h4 class="card-title mb-3">Knock-out</h4>
+              <label class="form-check form-switch">
+                {% render_field game_form.golden_goal_enabled class="form-check-input" %}
+                <span class="form-check-label">Golden goal inschakelen</span>
+              </label>
+              <div class="form-hint">
+                Bij gelijkstand in een knock-outwedstrijd gaat de ploeg door die als eerste scoorde.
+                Duid de winnaar aan met het golden-goalvinkje in het live beheercentrum.
+              </div>
+            </div>
+
             <!-- Schema & Puntentelling — voor alle formats behalve knockout -->
             <div id="section-schema-punten" class="card-body border-bottom" hidden>
               <h4 class="card-title mb-3">Schema &amp; Puntentelling</h4>
@@ -464,7 +477,7 @@
 
 {% block extra_scripts %}
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
-<script src="/static/js/organizer-settings.js?v=3"></script>
+<script src="/static/js/organizer-settings.js?v=4"></script>
 <!-- Quill WYSIWYG for Afspraken tab -->
 <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>

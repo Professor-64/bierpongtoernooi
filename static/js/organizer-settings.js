@@ -14,6 +14,7 @@ const VISIBILITY = [
   { id: 'section-groups-header',          show: ['groups'] },
   { id: 'section-competitie-header',      show: ['round_robin', 'combined'] },
   { id: 'section-knockout-advancement',   show: ['combined', 'groups'] },
+  { id: 'section-knockout',               show: ['knockout', 'combined', 'groups'] },
   { id: 'section-schema-punten',          show: ['round_robin', 'combined', 'groups'] },
   { id: 'section-gelijkstand',            show: ['round_robin', 'combined', 'groups'] },
   { id: 'section-playoffs-header',        show: ['round_robin', 'combined', 'groups'] },

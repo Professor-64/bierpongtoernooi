@@ -1,4 +1,5 @@
 import json
+import re
 from django.conf import settings
 from django.db.models import Q, F, ExpressionWrapper, IntegerField
 from django.shortcuts import render, redirect, get_object_or_404
@@ -240,6 +241,7 @@ def tournament_settings(request, slug):
                     messages.warning(request, 'Formaat gewijzigd — het schema is verwijderd. Maak een nieuw schema aan.')
                 else:
                     messages.success(request, 'Game-instellingen opgeslagen!')
+                _sync_golden_goal_rule(saved)
                 return _redirect_to_tab('game')
             active_tab = 'game'
 
@@ -1620,10 +1622,17 @@ def match_update(request, slug, match_id):
     elif action == 'finish':
         match.score1 = int(data.get('score1', match.score1))
         match.score2 = int(data.get('score2', match.score2))
-        bonus1 = data.get('bonus_team1')
-        bonus2 = data.get('bonus_team2')
-        match.bonus_team1 = bonus1 in [True, 'true', 'on', '1', 1]
-        match.bonus_team2 = bonus2 in [True, 'true', 'on', '1', 1]
+        # Bonus- en golden-goalvlaggen enkel bijwerken als ze meegestuurd zijn:
+        # de kaart toont die vinkjes niet in elke fase.
+        if 'bonus_team1' in data or 'bonus_team2' in data:
+            match.bonus_team1 = data.get('bonus_team1') in [True, 'true', 'on', '1', 1]
+            match.bonus_team2 = data.get('bonus_team2') in [True, 'true', 'on', '1', 1]
+        if 'golden_goal_team1' in data or 'golden_goal_team2' in data:
+            gg1 = data.get('golden_goal_team1') in [True, 'true', 'on', '1', 1]
+            gg2 = data.get('golden_goal_team2') in [True, 'true', 'on', '1', 1]
+            # Beide tegelijk is geen beslissing — behandel als niet aangeduid.
+            match.golden_goal_team1 = gg1 and not gg2
+            match.golden_goal_team2 = gg2 and not gg1
         match.status = Match.STATUS_FINISHED
         match.finished_at = timezone.now()
         match.save()
@@ -1656,6 +1665,30 @@ def match_update(request, slug, match_id):
             match.bonus_team2 = checked
         match.save()
 
+    elif action == 'set_golden_goal':
+        team = str(data.get('team', ''))
+        checked = data.get('checked', False) in [True, 'true', '1', 1]
+        # Bij een afgesloten wedstrijd verandert dit de winnaar: eerst de
+        # doorstoot van de óude winnaar terugdraaien, dan pas de vlag zetten.
+        rebuild = match.status == Match.STATUS_FINISHED and match.is_knockout_phase
+        if rebuild:
+            _undo_knockout_bracket(tournament, match)
+        # Slechts één ploeg kan de golden goal scoren: het andere vinkje valt weg.
+        if team == '1':
+            match.golden_goal_team1 = checked
+            if checked:
+                match.golden_goal_team2 = False
+        elif team == '2':
+            match.golden_goal_team2 = checked
+            if checked:
+                match.golden_goal_team1 = False
+        match.save()
+        if rebuild:
+            if match.phase == Match.PHASE_PLAYOFF:
+                _advance_playoff_to_knockout(tournament, match)
+            elif match.phase != Match.PHASE_FINAL_RANKING:
+                _advance_knockout_bracket(tournament, match)
+
     elif action == 'reopen':
         _undo_knockout_bracket(tournament, match)
         match.status = Match.STATUS_IN_PROGRESS
@@ -1667,6 +1700,8 @@ def match_update(request, slug, match_id):
         match.score2 = 0
         match.bonus_team1 = False
         match.bonus_team2 = False
+        match.golden_goal_team1 = False
+        match.golden_goal_team2 = False
         match.status = Match.STATUS_SCHEDULED
         match.started_at = None
         match.finished_at = None
@@ -2048,6 +2083,48 @@ def public_tables(request, slug):
     return render(request, 'tournament/public/tables.html', {'tournament': tournament})
 
 
+_GOLDEN_GOAL_RULE_HTML = (
+    '<li><strong>Golden goal:</strong> bij gelijkstand in een knock-outwedstrijd '
+    'gaat de ploeg door die als eerste scoorde.</li>'
+)
+
+# Eén <li> die ergens de term "golden goal" bevat (ook na handmatige aanpassing).
+_GOLDEN_GOAL_RULE_RE = re.compile(
+    r'<li\b[^>]*>(?:(?!</li>).)*?golden\s*goal(?:(?!</li>).)*</li>',
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def _golden_goal_in_rules(tournament):
+    """Golden goal hoort enkel in de afspraken als er ook een knock-outfase is."""
+    return (tournament.golden_goal_enabled
+            and tournament.format != Tournament.FORMAT_ROUND_ROBIN)
+
+
+def _sync_golden_goal_rule(tournament):
+    """Houd de golden-goalregel in de (handmatig aanpasbare) afspraken in sync.
+
+    Lege afspraken worden bij het tonen automatisch gegenereerd en bevatten de
+    regel dus al; enkel een opgeslagen tekst moet hier bijgewerkt worden. De
+    regel komt onderaan de eerste lijst te staan — dat is de sectie 'Algemeen'.
+    """
+    html = tournament.custom_rules or ''
+    if not html.strip():
+        return
+
+    cleaned = _GOLDEN_GOAL_RULE_RE.sub('', html)
+    if _golden_goal_in_rules(tournament):
+        idx = cleaned.find('</ul>')
+        if idx == -1:
+            cleaned += f'<ul>{_GOLDEN_GOAL_RULE_HTML}</ul>'
+        else:
+            cleaned = cleaned[:idx] + _GOLDEN_GOAL_RULE_HTML + cleaned[idx:]
+
+    if cleaned != html:
+        tournament.custom_rules = cleaned
+        tournament.save(update_fields=['custom_rules'])
+
+
 def _generate_auto_rules(tournament):
     """Generate rules as HTML based on tournament settings (used as WYSIWYG pre-fill)."""
     t = tournament
@@ -2079,6 +2156,8 @@ def _generate_auto_rules(tournament):
             p.append(f'<li><strong>Play-offs:</strong> plaatsen {t.knockout_advancement + 1}–{po_end}</li>')
         if t.final_ranking_enabled:
             p.append('<li>Finale ranking voor de overige ploegen</li>')
+    if _golden_goal_in_rules(t):
+        p.append(_GOLDEN_GOAL_RULE_HTML)
     p.append('</ul>')
 
     p.append('<h3>Puntentelling</h3><ul>')
@@ -2250,8 +2329,11 @@ def api_scores(request, slug):
             'phase': _match_phase_label(m, tournament),
             'table': m.table.name if m.table else '',
             'round': m.round_number,
-            'bonus_team1': m.bonus_team1,
-            'bonus_team2': m.bonus_team2,
+            # Bonuspunten bestaan enkel in de fases met een klassement
+            'bonus_team1': m.bonus_team1 and not m.is_knockout_phase,
+            'bonus_team2': m.bonus_team2 and not m.is_knockout_phase,
+            # 1 of 2 wanneer een gelijkstand met golden goal beslist is
+            'golden_goal': m.golden_goal_winner,
         }
 
     return JsonResponse({
@@ -2339,6 +2421,7 @@ def api_standings(request, slug):
             'score2': m.score2,
             'status': m.status,
             'table': m.table.name if m.table else None,
+            'golden_goal': m.golden_goal_winner,
         })
 
     # Playoff matches
@@ -2353,6 +2436,7 @@ def api_standings(request, slug):
         'score2': m.score2,
         'status': m.status,
         'table': m.table.name if m.table else None,
+        'golden_goal': m.golden_goal_winner,
     } for m in po_matches]
 
     # Final ranking matches
@@ -2366,6 +2450,7 @@ def api_standings(request, slug):
         'score1': m.score1,
         'score2': m.score2,
         'status': m.status,
+        'golden_goal': m.golden_goal_winner,
     } for m in fr_matches]
 
     # Starting rank for FR (teams ranked above FR are in KO/PO)
@@ -2580,6 +2665,7 @@ def api_tables(request, slug):
                     'status': current.status,
                     'phase': current.get_phase_display(),
                     'phase_label': _match_phase_label(current, tournament),
+                    'golden_goal': current.golden_goal_winner,
                 } if current else None,
             })
     else:
@@ -2602,6 +2688,7 @@ def api_tables(request, slug):
                     'status': current.status,
                     'phase': current.get_phase_display(),
                     'phase_label': _match_phase_label(current, tournament),
+                    'golden_goal': current.golden_goal_winner,
                 } if current else None,
             })
 

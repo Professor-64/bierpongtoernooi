@@ -5,11 +5,23 @@
    ================================================================ */
 
 /* ── Base / layout ───────────────────────────────────────────── */
+/* Never let the page itself scroll horizontally — any element that can grow
+   wider than the viewport (long team names, wide tables, the bracket) gets
+   its own overflow-x:auto wrapper instead. Without this, a single too-wide
+   element pushes the whole document wider than the viewport, and since the
+   header's own box stays viewport-width, scrolling right reveals blank
+   background past its edge. */
+html {
+  overflow-x: hidden;
+  width: 100%;
+}
 body {
   background: #f4f6fb;
   color: #1e293b;
   font-family: 'Inter', sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
 }
 .public-header {
   background: var(--bp-primary);
@@ -129,6 +141,16 @@ body {
 .live-indicator     { display: inline-block; width: 8px; height: 8px; background: var(--bp-primary); border-radius: 50%; animation: bp-pulse 1.2s infinite; }
 
 /* ── Standings table ─────────────────────────────────────────── */
+/* Scrolls its own table horizontally on narrow screens instead of
+   widening the page (which would blow out to a blank strip past the
+   header — see the html/body overflow-x:hidden rule above). */
+.standings-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.07);
+}
+.standings-table-wrap .standings-table { box-shadow: none; }
 .standings-table {
   width: 100%; border-collapse: collapse;
   background: white; border-radius: 10px; overflow: hidden;
@@ -423,15 +445,22 @@ body {
 /* Grid per bracket-formaat */
 .bk-grid { display: grid; position: relative; z-index: 2; }
 
+/*
+  minmax(0, 1fr) i.p.v. 1fr: de impliciete `auto`-ondergrens van 1fr laat een
+  kolom niet krimpen onder zijn min-content breedte. Met niet-afbrekende
+  namen is dat de volledige naam, waardoor één lange ploegnaam de hele kolom
+  (en dus de bracket) uitrekte. Met een 0-ondergrens mag de kolom krimpen en
+  breekt de tekst af binnen het kader.
+*/
 /* QF (≥5 ploegen): 5 kolommen */
-.bk-grid-qf    { grid-template-columns: repeat(5, 1fr); min-width: 580px; }
+.bk-grid-qf    { grid-template-columns: repeat(5, minmax(0, 1fr)); min-width: 580px; }
 /* SF (3-4 ploegen): 3 kolommen */
-.bk-grid-sf    { grid-template-columns: repeat(3, 1fr); min-width: 340px; }
+.bk-grid-sf    { grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 340px; }
 /* Finale-only: 1 kolom */
-.bk-grid-final { grid-template-columns: 1fr; max-width: 280px; margin: 0 auto; }
+.bk-grid-final { grid-template-columns: minmax(0, 1fr); max-width: 280px; margin: 0 auto; }
 
 /* Ronde-kolom */
-.bk-round { display: flex; flex-direction: column; }
+.bk-round { display: flex; flex-direction: column; min-width: 0; }
 
 .bk-round-label {
   text-align: center;
@@ -443,32 +472,58 @@ body {
 }
 
 /*
-  Vaste hoogte zodat space-around de slots uitlijnt met de volgende ronde.
-  H = 380px:
-    4 slots (QF) → centers op H/8, 3H/8, 5H/8, 7H/8
-    2 slots (SF) → centers op H/4, 3H/4   ← midpoints van QF-paren ✓
-    Finale-box   → gecentreerd op H/2      ← midpoint van SF-slots  ✓
+  Uitlijning tussen rondes.
+
+  Elke slot krijgt een eigen rij van GELIJKE hoogte (grid-auto-rows: 1fr) en
+  wordt daarin verticaal gecentreerd (align-items: center). De centers liggen
+  dus altijd op (i + ½)·H/n:
+    4 rijen (QF) → H/8, 3H/8, 5H/8, 7H/8
+    2 rijen (SF) → H/4, 3H/4   ← midpoints van QF-paren ✓
+    Finale-box   → H/2          ← midpoint van SF-slots  ✓
+
+  Cruciaal: omdat de rij (niet de slot) de hoogte bepaalt, blijven die centers
+  op hun plaats ook als een slot zelf hoger wordt doordat een lange ploegnaam
+  afbreekt over meerdere regels. De vorige opzet (space-around + vaste
+  slot-hoogte) klopte alleen zolang álle slots even hoog waren, en liep dus
+  scheef zodra tekst mocht teruglopen.
+
+  min-height i.p.v. height + flex:1 — de kolommen zijn grid-siblings en
+  stretchen dus samen naar de hoogste. Groeit één kolom door tekstterugloop,
+  dan groeien ze allemaal even hard en blijven de rij-centers uitgelijnd.
+
+  Extreem geval: heeft één slot méér hoogte nodig dan zijn 1fr-aandeel, dan
+  groeit die rij ten koste van zijn buren en verschuiven de centers wél.
+  Daarom tekent public-standings.js de uitgaande lijn expliciet naar het
+  center van het doel-slot (i.p.v. door te lopen op het midpunt van het paar)
+  en observeert het elke slot afzonderlijk met een ResizeObserver — de lijnen
+  kloppen dus bij elke hoogteverandering, ook in dat geval.
 */
 .bk-round-body {
-  height: 380px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
+  flex: 1;
+  min-height: 380px;
+  display: grid;
+  grid-auto-rows: 1fr;
+  align-items: center;
   padding: 0 8px;
 }
 
-.bk-final-body { justify-content: center; }
+/* Finale: één gecentreerde box — center valt samen met H/2 */
+.bk-final-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 /* Team-slots (individueel, niet gegroepeerd in een box) */
 .bk-slot {
-  height: 40px;
+  min-height: 40px;
   display: flex; align-items: center; gap: 6px;
-  padding: 0 10px;
+  padding: 5px 10px;
   border-radius: 5px;
   font-size: .8rem; font-weight: 600;
   border: 1px solid #e2e8f0;
   background: #f8fafc; color: #475569;
-  flex-shrink: 0; overflow: hidden;
+  overflow: hidden;
 }
 
 .bk-slot.winner { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
@@ -493,9 +548,61 @@ body {
   50%       { opacity: .3; transform: scale(.65); }
 }
 
-.bk-name  { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/*
+  Tekstterugloop i.p.v. afkappen. min-width:0 is nodig omdat een flex-item
+  standaard niet onder zijn min-content breedte krimpt — zonder dat duwt een
+  lange naam het kader alsnog open. overflow-wrap:anywhere breekt ook één
+  onafgebroken superlange naam zonder spaties af.
+*/
+.bk-name  {
+  flex: 1; min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
 .bk-score { font-weight: 800; font-size: .82rem; flex-shrink: 0; color: var(--bp-primary, #206bc4); }
 .bk-slot.loser .bk-score { color: #94a3b8; }
+
+/* ── Golden goal ─────────────────────────────────────────────── */
+/* Klein "GG"-chipje naast de ploeg die een gelijkstand besliste. */
+.bk-gg {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: 0 .35rem;
+  border-radius: 999px;
+  background: #fef3c7; color: #92400e;
+  border: 1px solid #fcd34d;
+  font-size: .6rem; font-weight: 800;
+  letter-spacing: .05em;
+  line-height: 1.5;
+  vertical-align: middle;
+}
+/* Badge naast de ploegnaam op het publieke scorebord. */
+.badge.gg-badge {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+}
+/* Toelichting onder een wedstrijd: het bleef gelijk, de golden goal besliste. */
+.bk-gg-note,
+.fr-gg-note,
+.match-gg-note {
+  font-size: .72rem;
+  color: #92400e;
+  background: #fffbeb;
+  border-top: 1px solid #fde68a;
+  padding: .35rem .75rem;
+  text-align: center;
+}
+.match-gg-note {
+  margin: .6rem -1rem -.85rem;
+  border-bottom-left-radius: inherit;
+  border-bottom-right-radius: inherit;
+}
+/* .fr-match is een flexrij: de toelichting moet op een eigen regel vallen. */
+.fr-match { flex-wrap: wrap; }
+.fr-gg-note { flex: 1 0 100%; margin: .5rem -1rem -.75rem; }
+.fr-rank-group .fr-gg-note { margin: 0; }
 
 /* Finale-box (speciaal, groter) */
 .bk-final-box {
@@ -509,7 +616,7 @@ body {
 .bk-final-box .bk-slot {
   border-radius: 0; border: none;
   border-bottom: 1px solid #fef9e7;
-  height: 48px; font-size: .88rem; padding: 0 14px;
+  min-height: 48px; font-size: .88rem; padding: 6px 14px;
 }
 .bk-final-box .bk-slot:last-of-type { border-bottom: none; }
 
@@ -765,6 +872,7 @@ body {
   padding: 1.5rem;
   max-height: 85vh;
   overflow-y: auto;
+  overflow-x: auto;
 }
 
 /* ── Standings section headings ──────────────────────────────── */

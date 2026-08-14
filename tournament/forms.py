@@ -50,6 +50,7 @@ class TournamentGameForm(forms.ModelForm):
             'name', 'format', 'default_drink', 'cup_count',
             'games_per_team', 'knockout_advancement', 'schedule_efficient',
             'points_win', 'points_draw', 'points_loss', 'points_bonus_all_cups',
+            'golden_goal_enabled',
             'playoff_enabled', 'playoff_count', 'final_ranking_enabled',
             'groups_count', 'tiebreaker_order',
         ]
